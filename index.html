@@ -368,7 +368,7 @@ function rectsRaw(mz, list, page) {
 const inAppsScript = !!(window.google && google.script && google.script.run);
 const imgCache = {};
 function pageSrc(m, p) {
-  if (!inAppsScript) return Promise.resolve(`صفحات المصحف/${m}/${p}.${MUSHAFS[m].ext}`);
+  if (!inAppsScript) return Promise.resolve(`pages/${m}/${p}.${MUSHAFS[m].ext}`);
   const k = m + "/" + p;
   if (!imgCache[k]) {
     imgCache[k] = new Promise((ok, fail) =>
