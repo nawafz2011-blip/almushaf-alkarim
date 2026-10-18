@@ -2,7 +2,12 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#fbfbf8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#19211f" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="القرآن الكريم">
 <title>القرآن الكريم</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Noto+Naskh+Arabic:wght@400;600&display=swap">
 <style>
@@ -19,6 +24,8 @@
   --play: rgba(31, 140, 120, .30);
   --font-ui: "IBM Plex Sans Arabic", "Geeza Pro", "Segoe UI", Tahoma, sans-serif;
   --font-body: "Noto Naskh Arabic", "Geeza Pro", serif;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-t: env(safe-area-inset-top, 0px);
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -27,132 +34,246 @@
     color-scheme: dark;
   }
 }
-* { box-sizing: border-box; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; }
-body { background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 15px; }
-
-.bar {
-  position: sticky; top: 0; z-index: 10; background: var(--surface);
-  border-bottom: 1px solid var(--line); padding: 8px 16px;
-  display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center;
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 16px;
+  touch-action: manipulation; overscroll-behavior-y: none;
 }
-.brand { font-family: var(--font-body); font-size: 20px; font-weight: 600; color: var(--accent); }
-.field { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
-select, input[type=number] {
-  font: inherit; font-size: 14px; color: var(--ink); background: var(--surface);
-  border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; max-width: 100%;
-}
-input[type=number] { width: 74px; }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* The whole app is a single phone-width column, also on a computer */
+.app { max-width: 520px; margin: 0 auto; min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
 
-.main { display: flex; gap: 18px; padding: 16px; justify-content: center; align-items: flex-start; }
-.book { display: flex; flex-direction: column; align-items: center; gap: 10px; min-width: 0; }
-.spread { display: flex; gap: 0; justify-content: center; }
+/* ---------- Top bar: search + settings ---------- */
+.top {
+  position: sticky; top: 0; z-index: 20; background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  padding: calc(8px + var(--safe-t)) 12px 8px;
+  display: flex; gap: 8px; align-items: center;
+}
+.search { position: relative; flex: 1; min-width: 0; }
+.search input {
+  width: 100%; font: inherit; font-size: 16px; color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 20px; padding: 9px 16px;
+}
+.search input:focus { background: var(--surface); outline: none; border-color: var(--accent); }
+.results {
+  position: fixed; top: calc(60px + var(--safe-t)); left: 50%; transform: translateX(-50%);
+  width: min(520px, 100vw); z-index: 40; background: var(--surface);
+  border-bottom: 1px solid var(--line); box-shadow: 0 16px 40px -18px rgba(0,0,0,.45);
+  max-height: calc(100dvh - 60px - var(--safe-t)); overflow: auto; padding: 6px 8px 16px;
+}
+.res-head { font-size: 13px; color: var(--muted); padding: 8px 8px 4px; }
+.res { display: block; width: 100%; text-align: start; font: inherit; color: var(--ink); background: none; border: 0; border-radius: 8px; padding: 10px; cursor: pointer; }
+.res:active, .res.on { background: var(--accent-soft); }
+.res .rr { color: var(--accent); font-family: var(--font-body); font-size: 15px; font-weight: 600; }
+.res .rt { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-family: var(--font-body); font-size: 18px; line-height: 1.9; }
+.res mark { background: var(--sel); color: inherit; border-radius: 3px; }
+.res-empty { padding: 12px 8px; color: var(--muted); font-size: 15px; }
+
+.round {
+  flex: none; width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--line);
+  background: var(--surface); color: var(--ink); display: grid; place-items: center; cursor: pointer; padding: 0;
+}
+.round svg { width: 22px; height: 22px; }
+.round:active { background: var(--accent-soft); }
+
+/* ---------- Page ---------- */
+.main { flex: 1; display: flex; justify-content: center; align-items: flex-start; padding: 8px 6px; }
+.spread { display: flex; justify-content: center; touch-action: pan-y pinch-zoom; transition: opacity .15s, transform .15s; }
+.spread.turn-next { opacity: 0; transform: translateX(30px); }
+.spread.turn-prev { opacity: 0; transform: translateX(-30px); }
 .page {
-  position: relative; height: var(--ph, 600px); width: auto; flex: none;
-  background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.18), 0 12px 30px -16px rgba(0,0,0,.4);
+  position: relative; height: var(--ph, 600px); width: auto; flex: none; overflow: hidden;
+  background: #fff; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,.18), 0 10px 26px -16px rgba(0,0,0,.4);
 }
-.page { overflow: hidden; }
-.page img { position: absolute; display: block; max-width: none; height: auto; user-select: none; -webkit-user-drag: none; }
+.page img { position: absolute; display: block; max-width: none; height: auto; user-select: none; -webkit-user-select: none; -webkit-user-drag: none; -webkit-touch-callout: none; }
 .hl { position: absolute; border-radius: 3px; cursor: pointer; }
-.hl.hover { background: var(--hover); }
+@media (hover: hover) { .hl.hover { background: var(--hover); } }
 .hl.sel { background: var(--sel); }
 .hl.play { background: var(--play); }
-.pager { display: flex; gap: 10px; align-items: center; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* ---------- Bottom player ---------- */
+.player {
+  position: sticky; bottom: 0; z-index: 20; background: var(--surface);
+  border-top: 1px solid var(--line); padding: 0 12px calc(10px + var(--safe-b));
+}
+.progress { height: 3px; background: var(--line); margin: 0 -12px; overflow: hidden; }
+.progress > i { display: block; height: 100%; width: 0; background: var(--accent); }
+.pinfo { display: flex; align-items: center; gap: 6px; padding: 8px 0 4px; }
+.pmeta { flex: 1; min-width: 0; text-align: center; display: flex; flex-direction: column; gap: 1px; }
+.ref { font-weight: 600; color: var(--accent); font-size: 16px; }
+#pageLabel { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.note { font-size: 13px; color: var(--muted); }
+#audioNote { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.flat { width: 38px; height: 38px; border: 0; background: none; color: var(--muted); }
+.pctrl { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.pbtn {
+  flex: none; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  font: inherit; font-size: 11px; color: var(--muted); background: none; border: 0; padding: 4px 2px; min-width: 52px; cursor: pointer;
+}
+.pbtn svg { width: 24px; height: 24px; color: var(--ink); }
+.pbtn.on, .pbtn.on svg { color: var(--accent); }
+.play-main {
+  flex: none; width: 62px; height: 62px; border-radius: 50%; border: 0; cursor: pointer;
+  background: var(--accent); color: var(--surface); display: grid; place-items: center;
+  box-shadow: 0 6px 16px -8px var(--accent);
+}
+.play-main svg { width: 28px; height: 28px; }
+.play-main:active { transform: scale(.96); }
+.skip { width: 46px; height: 46px; border: 0; background: none; color: var(--ink); }
+.skip svg { width: 26px; height: 26px; }
+
+/* ---------- Bottom sheets (settings, tafsir) and the repeat dialog ---------- */
+.modal {
+  position: fixed; inset: 0; z-index: 50; background: rgba(10, 20, 18, .45);
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.dialog {
+  background: var(--surface); color: var(--ink); width: min(520px, 100%);
+  max-height: 88dvh; overflow: auto; border-radius: 18px 18px 0 0;
+  padding: 8px 18px calc(18px + var(--safe-b)); display: flex; flex-direction: column; gap: 14px;
+  box-shadow: 0 -10px 40px -20px rgba(0,0,0,.5); animation: up .2s ease-out;
+}
+@keyframes up { from { transform: translateY(40px); opacity: .4; } }
+.dialog::before { content: ""; align-self: center; width: 40px; height: 4px; border-radius: 2px; background: var(--line); flex: none; }
+.dialog-head { display: flex; align-items: center; justify-content: space-between; }
+.dialog-head h2 { margin: 0; font-family: var(--font-body); font-size: 20px; color: var(--accent); }
+.icon-btn { font: inherit; font-size: 18px; background: none; border: 0; color: var(--muted); cursor: pointer; padding: 6px 10px; border-radius: 8px; }
+.icon-btn:active { background: var(--accent-soft); }
+
+.field { display: flex; flex-direction: column; gap: 6px; font-size: 14px; color: var(--muted); }
+.field.inline { flex-direction: row; align-items: center; gap: 10px; color: var(--ink); font-size: 16px; }
+select, input[type=number] {
+  font: inherit; font-size: 16px; color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; width: 100%;
+}
+input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
 .btn {
-  font: inherit; font-size: 14px; color: var(--ink); background: var(--surface);
-  border: 1px solid var(--line); border-radius: 6px; padding: 6px 14px; cursor: pointer;
+  font: inherit; font-size: 16px; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--line); border-radius: 10px; padding: 11px 18px; cursor: pointer;
 }
-.btn:hover { border-color: var(--accent); color: var(--accent); }
-.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--surface); min-width: 110px; }
-.btn.primary:hover { color: var(--surface); filter: brightness(1.08); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.btn:disabled { opacity: .45; cursor: default; }
 
-.side { width: 340px; flex: none; display: flex; flex-direction: column; gap: 14px; position: sticky; top: 70px; }
-.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
-.label { font-size: 12px; color: var(--muted); }
-.ref { font-weight: 600; color: var(--accent); font-size: 16px; }
-.tafsir { font-family: var(--font-body); font-size: 17px; line-height: 1.95; max-height: 62vh; overflow: auto; display: flex; flex-direction: column; gap: 8px; padding-inline-end: 4px; }
-.tf { border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; cursor: pointer; }
-.tf:hover { border-color: var(--accent); }
+.dialog fieldset { border: 1px solid var(--line); border-radius: 10px; margin: 0; padding: 8px 12px 12px; display: flex; flex-direction: column; gap: 10px; }
+.dialog legend { padding: 0 6px; font-weight: 600; color: var(--accent); font-size: 15px; }
+.range-row { display: grid; grid-template-columns: auto 1fr 90px; align-items: end; gap: 8px; }
+.range-tag { text-align: center; font-weight: 600; background: var(--accent-soft); color: var(--accent); border-radius: 8px; padding: 10px; }
+.dialog-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+.tafsir { font-family: var(--font-body); font-size: 18px; line-height: 2; display: flex; flex-direction: column; gap: 8px; }
+.tf { border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; cursor: pointer; }
 .tf.cur { background: var(--accent-soft); border-color: var(--accent); }
 .tn { color: var(--accent); font-family: var(--font-ui); font-size: 15px; margin-inline-end: 6px; white-space: nowrap; }
 .tf-surah { text-align: center; color: var(--accent); font-weight: 600; font-family: var(--font-ui); padding-block: 2px; }
-.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.note { font-size: 13px; color: var(--muted); }
-.progress { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; }
-.progress > i { display: block; height: 100%; width: 0; background: var(--accent); }
-#audioNote { white-space: pre-line; line-height: 1.7; }
-.btn:disabled { opacity: .45; cursor: default; }
-.btn:disabled:hover { border-color: var(--line); color: var(--ink); }
 
-/* Repeat settings dialog */
-.modal { position: fixed; inset: 0; z-index: 50; background: rgba(10, 20, 18, .45); display: flex; align-items: center; justify-content: center; padding: 16px; }
-.dialog { background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; width: min(460px, 100%); max-height: calc(100vh - 32px); overflow: auto; padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 20px 50px -20px rgba(0,0,0,.5); }
-.dialog-head { display: flex; align-items: center; justify-content: space-between; }
-.dialog-head h2 { margin: 0; font-family: var(--font-body); font-size: 19px; color: var(--accent); }
-.icon-btn { font: inherit; font-size: 16px; background: none; border: 0; color: var(--muted); cursor: pointer; padding: 4px 8px; border-radius: 6px; }
-.icon-btn:hover { color: var(--ink); background: var(--accent-soft); }
-.dialog fieldset { border: 1px solid var(--line); border-radius: 8px; margin: 0; padding: 8px 12px 12px; display: flex; flex-direction: column; gap: 8px; }
-.dialog legend { padding: 0 6px; font-weight: 600; color: var(--accent); font-size: 14px; }
-.dialog fieldset > select { width: 100%; }
-.range-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.range-tag { min-width: 42px; text-align: center; font-weight: 600; background: var(--accent-soft); color: var(--accent); border-radius: 6px; padding: 4px 8px; }
-.range-row select { max-width: 150px; }
-.dialog-actions { display: flex; gap: 10px; justify-content: center; padding-top: 4px; }
+/* Tajweed color key (shown only for the color-coded mushaf) */
+.legend { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; font-size: 14px; line-height: 1.5; }
+.legend .lg-head { grid-column: 1 / -1; font-size: 13px; color: var(--muted); margin-top: 2px; }
+.legend span { display: flex; align-items: center; gap: 7px; }
+.legend i { width: 14px; height: 14px; border-radius: 50%; flex: none; box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); }
+.legend b { font-weight: 600; }
+.label { font-size: 13px; color: var(--muted); }
 
 [hidden] { display: none !important; }
-.ctrls { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin-inline-start: auto; }
-
-@media (max-width: 1000px) {
-  .main { flex-direction: column; align-items: center; }
-  .side { width: 100%; max-width: 560px; position: static; }
-}
 </style>
 </head>
 <body>
-<header class="bar">
-  <div class="brand">القرآن الكريم</div>
-  <span class="ctrls" id="ctrls">
-    <label class="field">المصحف <select id="mushafSel"></select></label>
-    <label class="field">السورة <select id="surahSel"></select></label>
-    <label class="field">الجزء <select id="juzSel"></select></label>
-    <label class="field">الصفحة <input id="pageInput" type="number" min="1" max="604"></label>
-    <label class="field">القارئ <select id="reciterSel"></select></label>
-  </span>
+<div class="app">
+<header class="top">
+  <div class="search" id="searchBox">
+    <input id="searchInput" type="search" placeholder="ابحث عن سورة أو آية…" autocomplete="off" enterkeyhint="search" aria-label="بحث" aria-controls="searchResults">
+    <div class="results" id="searchResults" hidden></div>
+  </div>
+  <button class="round" id="settingsBtn" aria-label="الإعدادات">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
+  </button>
 </header>
 
-<div class="main" id="mine">
-  <div class="book">
-    <div class="spread" id="spread"></div>
-    <div class="pager">
-      <button class="btn" id="prevPage">→ السابقة</button>
-      <span id="pageLabel"></span>
-      <button class="btn" id="nextPage">التالية ←</button>
-    </div>
-  </div>
+<main class="main">
+  <div class="spread" id="spread"></div>
+</main>
 
-  <aside class="side">
-    <section class="panel">
-      <div class="label">التلاوة</div>
-      <div class="row">
-        <button class="btn" id="prevAyah">الآية السابقة</button>
-        <button class="btn primary" id="playBtn">▶ تشغيل</button>
-        <button class="btn" id="nextAyah">الآية التالية</button>
+<nav class="player" id="player">
+  <div class="progress"><i id="prog"></i></div>
+  <div class="pinfo">
+    <button class="round flat" id="prevPage" aria-label="الصفحة السابقة">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+    </button>
+    <div class="pmeta">
+      <span class="ref" id="ref">—</span>
+      <span id="pageLabel"></span>
+      <span class="note" id="audioNote" style="visibility:hidden">&nbsp;</span>
+    </div>
+    <button class="round flat" id="nextPage" aria-label="الصفحة التالية">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+    </button>
+  </div>
+  <div class="pctrl">
+    <button class="pbtn" id="repeatBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l3 3-3 3"/><path d="M4 11V9a4 4 0 0 1 4-4h12"/><path d="M7 22l-3-3 3-3"/><path d="M20 13v2a4 4 0 0 1-4 4H4"/></svg>
+      <span>التكرار</span>
+    </button>
+    <button class="round skip" id="prevAyah" aria-label="الآية السابقة">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6l9 6-9 6z"/><rect x="16" y="6" width="2.4" height="12" rx="1"/></svg>
+    </button>
+    <button class="play-main" id="playBtn" aria-label="تشغيل"></button>
+    <button class="round skip" id="nextAyah" aria-label="الآية التالية">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 6l-9 6 9 6z"/><rect x="5.6" y="6" width="2.4" height="12" rx="1"/></svg>
+    </button>
+    <button class="pbtn" id="tafsirBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6c-2-1.5-5-2-8-1.5v13c3-.5 6 0 8 1.5 2-1.5 5-2 8-1.5v-13c-3-.5-6 0-8 1.5z"/><path d="M12 6v13"/></svg>
+      <span>التفسير</span>
+    </button>
+  </div>
+</nav>
+</div>
+
+<!-- Settings sheet -->
+<div class="modal" id="settingsModal" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="dialog-head">
+      <h2 id="settingsTitle">الإعدادات</h2>
+      <button class="icon-btn" data-close aria-label="إغلاق">✕</button>
+    </div>
+    <label class="field">المصحف <select id="mushafSel"></select></label>
+    <label class="field">القارئ <select id="reciterSel"></select></label>
+    <label class="field">السورة <select id="surahSel"></select></label>
+    <div class="grid2">
+      <label class="field">الجزء <select id="juzSel"></select></label>
+      <label class="field">الصفحة <input id="pageInput" type="number" inputmode="numeric" min="1" max="604"></label>
+    </div>
+    <label class="field inline"><input type="checkbox" id="autoNext" checked> متابعة التلاوة للآية التالية</label>
+    <section id="tajweedKey" hidden>
+      <div class="label" style="margin-bottom:6px">ألوان التجويد</div>
+      <div class="legend">
+        <div class="lg-head">المدود</div>
+        <span><i style="background:#a83c30"></i><span>مد لازم <b>٦ حركات</b></span></span>
+        <span><i style="background:#e8392c"></i><span>مد واجب <b>٤ أو ٥</b></span></span>
+        <span><i style="background:#ef8838"></i><span>مد جائز <b>٢ أو ٤ أو ٦</b></span></span>
+        <span><i style="background:#c8953f"></i><span>مد طبيعي <b>حركتان</b></span></span>
+        <div class="lg-head">أحكام أخرى</div>
+        <span><i style="background:#4a8a52"></i><span>إخفاء وغنّة <b>حركتان</b></span></span>
+        <span><i style="background:#9d9781"></i><span>إدغام، وما لا يُلفظ</span></span>
+        <span><i style="background:#3d6582"></i><span>تفخيم الراء</span></span>
+        <span><i style="background:#4a92d0"></i><span>قلقلة</span></span>
       </div>
-      <div class="progress"><i id="prog"></i></div>
-      <div class="row">
-        <label class="field"><input type="checkbox" id="autoNext" checked> متابعة التلاوة</label>
-        <button class="btn" id="repeatBtn">⟳ إعدادات التكرار</button>
-      </div>
-      <div class="note" id="audioNote">اضغط على أي آية في الصفحة ثم شغّل.</div>
     </section>
-    <section class="panel">
-      <div class="label">التفسير الميسّر</div>
-      <div class="ref" id="ref">—</div>
-      <div class="tafsir" id="tafsir"></div>
-    </section>
-  </aside>
+  </div>
+</div>
+
+<!-- Tafsir sheet -->
+<div class="modal" id="tafsirModal" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="tafsirTitle">
+    <div class="dialog-head">
+      <h2 id="tafsirTitle">التفسير الميسّر</h2>
+      <button class="icon-btn" data-close aria-label="إغلاق">✕</button>
+    </div>
+    <div class="tafsir" id="tafsir"></div>
+  </div>
 </div>
 
 <div class="modal" id="repeatModal" hidden>
@@ -198,7 +319,7 @@ input[type=number] { width: 74px; }
     </fieldset>
     <div class="dialog-actions">
       <button class="btn primary" id="repStart">بدء</button>
-      <button class="btn" id="repStop" disabled>إيقاف</button>
+      <button class="btn" id="repStop" disabled>إيقاف التكرار</button>
     </div>
   </div>
 </div>
@@ -364,20 +485,33 @@ function rectsRaw(mz, list, page) {
   return out;
 }
 
-/* ---------- Page images: pages/ folder next to this file ---------- */
-const pageSrc = (m, p) => `pages/${m}/${p}.${MUSHAFS[m].ext}`;
+/* ---------- Page images: local folder, or Google Drive when running in Apps Script ---------- */
+const inAppsScript = !!(window.google && google.script && google.script.run);
+const imgCache = {};
+function pageSrc(m, p) {
+  if (!inAppsScript) return Promise.resolve(`pages/${m}/${p}.${MUSHAFS[m].ext}`);
+  const k = m + "/" + p;
+  if (!imgCache[k]) {
+    imgCache[k] = new Promise((ok, fail) =>
+      google.script.run.withSuccessHandler(ok).withFailureHandler(e => { delete imgCache[k]; fail(e); }).getPage(m, p));
+  }
+  return imgCache[k];
+}
 
 /* ---------- Rendering ---------- */
-let page = 1, cur = -1, playing = false, playIdx = -1;
-const twoUp = () => window.innerWidth >= 1350;
+// paused: stopped mid-ayah by the user; pressing play carries on from the same spot
+let page = 1, cur = -1, playing = false, paused = false, playIdx = -1;
+const twoUp = () => false;   // phone layout: always one page
 
 const ratioOf = p => { const [x0, x1, y0, y1] = frameOf(p).crop; return (x1 - x0) / (y1 - y0); };
-// Facing pages share one height, so their lines and frames sit level
+// The page fills the screen width, and shrinks only if it would not fit between the top bar and the player
 function sizePages() {
-  const totalRatio = shownPages().map(ratioOf).reduce((a, b) => a + b, 0);
-  const availH = Math.max(260, window.innerHeight - 140);
-  const availW = twoUp() ? Math.min(window.innerWidth - 32 - 340 - 18, 1120) : Math.min(window.innerWidth - 32, 560);
-  document.documentElement.style.setProperty("--ph", Math.floor(Math.min(availH, availW / totalRatio)) + "px");
+  const ratio = ratioOf(page);
+  const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  const chrome = $("searchBox").parentNode.offsetHeight + $("player").offsetHeight + 16;
+  const availH = Math.max(300, vh - chrome);
+  const availW = Math.min(window.innerWidth, 520) - 12;
+  document.documentElement.style.setProperty("--ph", Math.floor(Math.min(availH, availW / ratio)) + "px");
 }
 
 function pageEl(p) {
@@ -388,9 +522,10 @@ function pageEl(p) {
   const img = document.createElement("img");
   img.alt = "صفحة " + ar(p);
   img.style.cssText = `width:${456 / cw * 100}%;left:${-x0 / cw * 100}%;top:${-y0 / ch * 100}%`;
-  img.onerror = () => { div.insertAdjacentHTML("beforeend", '<div class="note" style="position:absolute;inset:40% 10% auto;text-align:center">تعذّر تحميل الصفحة. تأكد من اتصال الإنترنت.</div>'); };
-  img.src = pageSrc(mushaf, p);
   div.appendChild(img);
+  const m = mushaf;
+  pageSrc(m, p).then(src => { if (m === mushaf) img.src = src; })
+    .catch(() => { div.insertAdjacentHTML("beforeend", '<div class="note" style="position:absolute;inset:40% 10% auto;text-align:center">تعذّر تحميل الصفحة. تأكد من مجلد الصفحات في قوقل درايف.</div>'); });
   const first = X().first[p - 1];
   rectsFor(p).forEach((rs, n) => rs.forEach(([t, l, w, h]) => {
     if (w <= 0 || h <= 0) return;
@@ -414,8 +549,8 @@ function render(p) {
   const sp = $("spread"), ps = shownPages();
   sp.innerHTML = "";
   ps.forEach(q => sp.appendChild(pageEl(q)));
-  $("pageLabel").textContent = "صفحة " + ps.map(ar).join(" – ");
   const fi = X().first[page - 1];
+  $("pageLabel").textContent = "صفحة " + ar(page) + " · الجزء " + ar(JUZ[fi]);
   $("pageInput").value = page;
   $("surahSel").value = AY[fi].s;
   $("juzSel").value = JUZ[fi];
@@ -423,7 +558,7 @@ function render(p) {
   renderTafsir();
   // warm the next pages so turning is instant
   const nx = ps[ps.length - 1] + 1;
-  [nx, nx + 1].filter(q => q <= 604).forEach(q => { new Image().src = pageSrc(mushaf, q); });
+  [nx, nx + 1].filter(q => q <= 604).forEach(q => pageSrc(mushaf, q).then(src => { new Image().src = src; }).catch(() => {}));
 }
 
 /* ---------- Tafsir list for the pages on screen ---------- */
@@ -471,7 +606,7 @@ function markTafsir(scroll) {
   const box = $("tafsir");
   box.querySelectorAll(".tf").forEach(d => d.classList.toggle("cur", +d.dataset.i === cur));
   const el = box.querySelector(".tf.cur");
-  if (el && scroll) box.scrollTop = el.offsetTop - box.offsetTop - 8;
+  if (el && scroll && !$("tafsirModal").hidden) el.scrollIntoView({ block: "center" });
 }
 $("tafsir").addEventListener("click", e => {
   const d = e.target.closest(".tf"); if (!d) return;
@@ -482,8 +617,9 @@ $("tafsir").addEventListener("click", e => {
 function paint() {
   document.querySelectorAll(".hl").forEach(d => {
     const i = +d.dataset.i;
-    d.classList.toggle("sel", i === cur && !(playing && i === playIdx));
-    d.classList.toggle("play", playing && i === playIdx);
+    const active = (playing || paused) && i === playIdx;
+    d.classList.toggle("sel", i === cur && !active);
+    d.classList.toggle("play", active);
   });
 }
 
@@ -492,11 +628,10 @@ const onPage = i => shownPages().includes(X().pageOf[i]);
 function select(i) {
   if (i < 0 || i >= AY.length) return;
   cur = i;
-  // picking another ayah while paused means the next play starts that ayah from its beginning
-  if (paused && i !== playIdx) { paused = false; pending = null; setPlayBtn(); updateNote(); }
   if (!onPage(i)) render(X().pageOf[i]); else paint();
   const o = AY[i];
   $("ref").textContent = "سورة " + SURAHS[o.s - 1][0] + " · الآية " + ar(o.a);
+  setMediaInfo();
   markTafsir(true);
   store.set("last", o.s + "_" + o.a);
   try { history.replaceState(null, "", "#aya=" + o.s + "_" + o.a); } catch (e) {}
@@ -504,10 +639,14 @@ function select(i) {
 
 /* ---------- Audio ---------- */
 const audio = $("audio"), pre = $("preload");
-let inBasmala = false, waitTimer = 0;
-// Paused keeps the place inside the ayah (and inside a repeat session) so play carries on from there.
-// pending is the step that was waiting out the pause between recitations when the pause came.
-let paused = false, pending = null;
+let inBasmala = false, waitTimer = 0, pendingWait = null;   // pendingWait: step still due when paused during a wait
+const ICON_PLAY = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>';
+const ICON_PAUSE = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6.5" y="5" width="3.6" height="14" rx="1"/><rect x="13.9" y="5" width="3.6" height="14" rx="1"/></svg>';
+function setPlayBtn() {
+  $("playBtn").innerHTML = playing ? ICON_PAUSE : ICON_PLAY;
+  $("playBtn").setAttribute("aria-label", playing ? "إيقاف مؤقت" : paused ? "متابعة" : "تشغيل");
+  if ("mediaSession" in navigator) navigator.mediaSession.playbackState = playing ? "playing" : paused ? "paused" : "none";
+}
 // Repeat session started from the repeat dialog; null while playing normally.
 // Counts are totals (1 = play once); Infinity means "until stopped".
 let session = null;   // { from, to, ayahTimes, wait, passTimes, ayahLeft, passLeft }
@@ -529,16 +668,15 @@ function updateNote(waiting) {
     if (s.passTimes > 1) t += " · الفقرة: " + (s.passTimes === Infinity ? "بلا توقف" : ar(s.passTimes - s.passLeft) + " من " + ar(s.passTimes));
     if (waiting) t += "\nانتظار…";
   }
-  if (paused) t += "\nمتوقف مؤقتًا · اضغط «متابعة» ليكمل من نفس الموضع";
+  if (paused) t = "متوقف مؤقتًا · " + t;
   $("audioNote").textContent = t;
+  // keep the line's space so the page does not jump when recitation starts
+  $("audioNote").style.visibility = (playing || paused || session) ? "visible" : "hidden";
 }
-
-const setPlayBtn = () => { $("playBtn").textContent = playing ? "❚❚ إيقاف" : paused ? "▶ متابعة" : "▶ تشغيل"; };
 
 function playAyah(i, fresh = true) {
   if (i < 0 || i >= AY.length) { stop(); return; }
-  clearTimeout(waitTimer);
-  pending = null; paused = false;
+  clearTimeout(waitTimer); pendingWait = null; paused = false;
   if (session && (i < session.from || i > session.to)) endSession();   // jumped outside the range
   playIdx = i; playing = true;
   if (fresh && session) session.ayahLeft = session.ayahTimes - 1;
@@ -556,35 +694,32 @@ function playAyah(i, fresh = true) {
 function endSession() {
   session = null;
   $("repStop").disabled = true;
-  $("repeatBtn").classList.remove("primary");
+  $("repeatBtn").classList.remove("on");
 }
 
 function stop() {
-  clearTimeout(waitTimer);
-  pending = null; paused = false;
+  clearTimeout(waitTimer); pendingWait = null;
   endSession();
-  playing = false; audio.pause();
+  playing = false; paused = false; audio.pause();
   setPlayBtn();
   $("prog").style.width = "0";
   updateNote();
   paint();
 }
 
+// Pause keeps the ayah, its position and any repeat session, so play continues from the same spot
 function pause() {
-  clearTimeout(waitTimer);
+  if (!playing) return;
   playing = false; paused = true;
+  clearTimeout(waitTimer);
   audio.pause();
-  setPlayBtn();
-  updateNote();
-  paint();
+  setPlayBtn(); updateNote(); paint();
 }
-
 function resume() {
+  if (!paused) return;
   playing = true; paused = false;
-  setPlayBtn();
-  updateNote();
-  paint();
-  if (pending) { const fn = pending; pending = null; fn(); }
+  setPlayBtn(); updateNote(); paint();
+  if (pendingWait) { const fn = pendingWait; pendingWait = null; fn(); }
   else audio.play().catch(() => {});
 }
 
@@ -593,10 +728,14 @@ function afterWait(fn) {
   const w = session.wait, ms = w >= 0 ? w * 1000 : -w * (audio.duration || 0) * 1000;
   if (ms <= 0) return fn();
   updateNote(true);
-  pending = fn;
-  waitTimer = setTimeout(() => { pending = null; if (playing) fn(); }, ms);
+  pendingWait = fn;
+  waitTimer = setTimeout(() => { if (playing) { pendingWait = null; fn(); } }, ms);
 }
 
+// Paused from outside the page (headphones taken out, a phone call): treat it like the pause button
+audio.addEventListener("pause", () => {
+  if (playing && !audio.ended && audio.readyState >= 3 && audio.currentTime > 0) pause();
+});
 audio.addEventListener("timeupdate", () => {
   if (audio.duration) $("prog").style.width = (audio.currentTime / audio.duration * 100) + "%";
 });
@@ -650,7 +789,7 @@ $("repStart").onclick = () => {
   store.set("repeat", JSON.stringify({ repAyah: $("repAyah").value, repWait: $("repWait").value, repPass: $("repPass").value }));
   const ayahTimes = countOf($("repAyah").value), passTimes = countOf($("repPass").value);
   session = { from, to, ayahTimes, wait: +$("repWait").value, passTimes, ayahLeft: ayahTimes - 1, passLeft: passTimes - 1 };
-  $("repeatBtn").classList.add("primary");
+  $("repeatBtn").classList.add("on");
   closeRepeat();
   playAyah(from);
 };
@@ -674,6 +813,61 @@ function fill() {
   ["surahSel", "repFromS", "repToS"].forEach(id => { $(id).innerHTML = surahOpts; });
   $("juzSel").innerHTML = Array.from({ length: 30 }, (_, i) => `<option value="${i + 1}">${ar(i + 1)}</option>`).join("");
   fillReciters();
+  showKey();
+}
+const showKey = () => { $("tajweedKey").hidden = mushaf !== "tajweed"; };
+
+/* ---------- Bottom sheets ---------- */
+function openSheet(id) { $(id).hidden = false; }
+function closeSheets() { ["settingsModal", "tafsirModal"].forEach(id => { $(id).hidden = true; }); }
+["settingsModal", "tafsirModal"].forEach(id => {
+  $(id).addEventListener("click", e => { if (e.target.id === id || e.target.closest("[data-close]")) closeSheets(); });
+  $(id).addEventListener("keydown", e => { if (e.key === "Escape") closeSheets(); e.stopPropagation(); });
+});
+$("settingsBtn").onclick = () => openSheet("settingsModal");
+$("tafsirBtn").onclick = () => { openSheet("tafsirModal"); markTafsir(true); };
+// choosing a surah, juz or page takes you straight to it
+["surahSel", "juzSel", "mushafSel"].forEach(id => $(id).addEventListener("change", closeSheets));
+$("pageInput").addEventListener("change", () => { $("pageInput").blur(); closeSheets(); });
+
+/* ---------- Swipe to turn pages (like a mushaf: swipe right for the next page) ---------- */
+let tx = 0, ty = 0, tt = 0, multi = false;
+$("spread").addEventListener("touchstart", e => {
+  multi = e.touches.length > 1;
+  const t = e.touches[0]; tx = t.clientX; ty = t.clientY; tt = Date.now();
+}, { passive: true });
+$("spread").addEventListener("touchend", e => {
+  if (multi || (window.visualViewport && window.visualViewport.scale > 1.05)) return;   // pinch-zooming, not turning
+  const t = e.changedTouches[0], dx = t.clientX - tx, dy = t.clientY - ty;
+  if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5 || Date.now() - tt > 700) return;
+  turn(dx > 0 ? 1 : -1);
+});
+function turn(dir) {
+  const to = page + dir;
+  if (to < 1 || to > 604) return;
+  const sp = $("spread");
+  sp.classList.add(dir > 0 ? "turn-next" : "turn-prev");
+  setTimeout(() => { render(to); sp.classList.remove("turn-next", "turn-prev"); }, 140);
+}
+
+/* ---------- Lock-screen / headphone controls ---------- */
+function setMediaInfo() {
+  if (!("mediaSession" in navigator) || cur < 0) return;
+  const o = AY[playing || paused ? playIdx : cur];
+  try {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: "سورة " + SURAHS[o.s - 1][0] + " · الآية " + ar(o.a),
+      artist: $("reciterSel").selectedOptions[0] ? $("reciterSel").selectedOptions[0].text : "",
+      album: "القرآن الكريم",
+    });
+  } catch (e) {}
+}
+if ("mediaSession" in navigator) {
+  const ms = navigator.mediaSession, on = (a, f) => { try { ms.setActionHandler(a, f); } catch (e) {} };
+  on("play", () => { if (paused) resume(); else if (!playing) $("playBtn").click(); });
+  on("pause", pause);
+  on("nexttrack", () => $("nextAyah").click());
+  on("previoustrack", () => $("prevAyah").click());
 }
 
 const spread = $("spread");
@@ -693,29 +887,25 @@ spread.addEventListener("click", e => {
 
 const step = () => twoUp() ? 2 : 1;
 const base = () => shownPages()[0];
-$("nextPage").onclick = () => render(base() + step());
-$("prevPage").onclick = () => render(base() - step());
+$("nextPage").onclick = () => turn(1);
+$("prevPage").onclick = () => turn(-1);
 $("playBtn").onclick = () => {
   if (playing) pause();
-  else if (paused && cur === playIdx) resume();
-  else playAyah(cur < 0 ? X().first[page - 1] : cur);
+  else if (paused && cur === playIdx) resume();          // same ayah: carry on from where it stopped
+  else playAyah(cur < 0 ? X().first[page - 1] : cur);    // another ayah was chosen: start it
 };
 $("nextAyah").onclick = () => { const i = Math.min(AY.length - 1, cur + 1); playing ? playAyah(i) : select(i); };
 $("prevAyah").onclick = () => { const i = Math.max(0, cur - 1); playing ? playAyah(i) : select(i); };
 $("pageInput").onchange = e => { const v = parseInt(e.target.value, 10); if (v >= 1 && v <= 604) render(v); };
 $("surahSel").onchange = e => { const i = surahFirst[+e.target.value]; if (playing) playAyah(i); else select(i); };
 $("juzSel").onchange = e => render(X().juzFirst[+e.target.value]);
-$("reciterSel").onchange = () => {
-  store.set(MZ().warsh ? "reciterWarsh" : "reciter", rec());
-  if (playing) return playAyah(playIdx);
-  if (paused) { paused = false; pending = null; setPlayBtn(); }   // the new reciter starts the ayah afresh
-  updateNote();
-};
+$("reciterSel").onchange = () => { store.set(MZ().warsh ? "reciterWarsh" : "reciter", rec()); if (playing) playAyah(playIdx); else if (paused) stop(); };
 $("mushafSel").onchange = e => {
   const wasWarsh = MZ().warsh;
-  if (playing || paused) stop();
+  if (playing) stop();
   mushaf = e.target.value;
   store.set("mushaf", mushaf);
+  showKey();
   if (MZ().warsh !== wasWarsh) fillReciters();
   const i = cur >= 0 ? cur : X().first[page - 1];
   render(X().pageOf[i]);
@@ -727,7 +917,103 @@ document.addEventListener("keydown", e => {
   else if (e.key === "ArrowRight") $("prevPage").click();
   else if (e.key === " ") { e.preventDefault(); $("playBtn").click(); }
 });
-let rz; window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => render(page), 150); });
+let rz, lastW = window.innerWidth;
+// Re-layout on rotation, but not when the phone keyboard opens (that only changes the height)
+window.addEventListener("resize", () => {
+  clearTimeout(rz);
+  rz = setTimeout(() => { if (window.innerWidth !== lastW || !document.activeElement.matches("input")) { lastW = window.innerWidth; render(page); } }, 150);
+});
+
+/* ---------- Search: surahs by name, ayahs by text ---------- */
+// Letters are compared without diacritics, and alef/yaa/taa-marbuta variants count as one
+const norm = t => t.replace(/[ؐ-ًؚ-ٰٟۖ-ۭـ]/g, "")
+  .replace(/[أإآٱ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").replace(/ؤ/g, "و").replace(/ئ/g, "ي")
+  .replace(/\s+/g, " ").trim();
+const SURAH_N = SURAHS.map(x => norm(x[0]));
+let quranN = null, quranLoad = null;
+function loadQuran() {
+  if (!quranLoad) quranLoad = new Promise((ok, fail) => {
+    const sc = document.createElement("script");
+    sc.src = "quran.js";
+    sc.onload = () => { quranN = AY.map(o => norm(QURAN[o.s - 1][o.a - 1])); ok(); };
+    sc.onerror = () => { quranLoad = null; fail(); };
+    document.head.appendChild(sc);
+  });
+  return quranLoad;
+}
+const esc = t => t.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+// Mark the query inside the original (voweled) text: map normalized positions back to it
+function markIn(text, q) {
+  const keep = [], chars = [];
+  for (let k = 0; k < text.length; k++) {
+    const n = /\s/.test(text[k]) ? " " : norm(text[k]);
+    if (n) { chars.push(n); keep.push(k); }
+  }
+  const flat = chars.join(""), at = flat.indexOf(q);
+  if (at < 0) return esc(text);
+  const a = keep[at], endK = keep[at + q.length - 1];
+  let b = endK + 1;
+  while (b < text.length && !norm(text[b])) b++;   // keep the last letter's vowels inside the mark
+  return esc(text.slice(0, a)) + "<mark>" + esc(text.slice(a, b)) + "</mark>" + esc(text.slice(b));
+}
+const sBox = $("searchResults"), sIn = $("searchInput");
+let sItems = [], sOn = -1;
+function goTo(i) {
+  sBox.hidden = true; sIn.blur();
+  playing ? playAyah(i) : select(i);
+}
+function showResults(html) { sBox.innerHTML = html; sBox.hidden = false; sOn = -1; sItems = [...sBox.querySelectorAll(".res")]; }
+function runSearch() {
+  const raw = sIn.value.trim();
+  if (!raw) { sBox.hidden = true; return; }
+  let html = "";
+  // "2:255", "2 255" or a surah number jump straight to it
+  const ref = /^(\d{1,3})(?:\s*[:\s\-/]\s*(\d{1,3}))?$/.exec(raw.replace(/[٠-٩]/g, d => "٠١٢٣٤٥٦٧٨٩".indexOf(d)));
+  if (ref) {
+    const s = +ref[1], a = ref[2] ? +ref[2] : 1, i = idxOf(s, a);
+    if (i >= 0) html += `<button class="res" data-i="${i}"><span class="rr">سورة ${SURAHS[s - 1][0]}${ref[2] ? " · الآية " + ar(a) : ""}</span></button>`;
+  }
+  const q = norm(raw).replace(/^سوره\s+/, "");
+  if (q) {
+    const ss = [];
+    SURAH_N.forEach((n, k) => { if (n.includes(q) || n.replace(/^ال/, "").startsWith(q)) ss.push(k); });
+    if (ss.length) html += `<div class="res-head">السور</div>` + ss.slice(0, 8).map(k =>
+      `<button class="res" data-i="${surahFirst[k + 1]}"><span class="rr">${ar(k + 1)}. سورة ${SURAHS[k][0]}</span> <span class="note">· ${ar(SURAHS[k][1])} آية</span></button>`).join("");
+  }
+  if (q.length >= 2 && quranN) {
+    const hits = [];
+    for (let i = 0; i < quranN.length && hits.length < 60; i++) if (quranN[i].includes(q)) hits.push(i);
+    let total = hits.length;
+    if (total === 60) { total = 0; quranN.forEach(t => { if (t.includes(q)) total++; }); }
+    if (hits.length) html += `<div class="res-head">الآيات (${ar(total)}${total > hits.length ? "، أول " + ar(hits.length) : ""})</div>` + hits.map(i => {
+      const o = AY[i];
+      return `<button class="res" data-i="${i}"><span class="rr">${SURAHS[o.s - 1][0]} ${ar(o.a)}</span><span class="rt">${markIn(QURAN[o.s - 1][o.a - 1], q)}</span></button>`;
+    }).join("");
+  } else if (q.length >= 2 && !quranN) {
+    html += `<div class="res-empty">جارٍ تحميل نص القرآن…</div>`;
+    loadQuran().then(runSearch, () => showResults(`<div class="res-empty">تعذّر تحميل نص القرآن للبحث.</div>`));
+  }
+  showResults(html || `<div class="res-empty">لا توجد نتائج</div>`);
+}
+let sT;
+sIn.addEventListener("focus", () => { loadQuran().catch(() => {}); if (sIn.value.trim()) runSearch(); });
+sIn.addEventListener("input", () => { clearTimeout(sT); sT = setTimeout(runSearch, 150); });
+sIn.addEventListener("keydown", e => {
+  if (e.key === "Escape") { sBox.hidden = true; sIn.blur(); return; }
+  if (!sItems.length || sBox.hidden) return;
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    sOn = (sOn + (e.key === "ArrowDown" ? 1 : -1) + sItems.length) % sItems.length;
+    sItems.forEach((b, k) => b.classList.toggle("on", k === sOn));
+    sItems[sOn].scrollIntoView({ block: "nearest" });
+  } else if (e.key === "Enter") {
+    e.preventDefault();
+    goTo(+sItems[Math.max(0, sOn)].dataset.i);
+  }
+});
+sBox.addEventListener("click", e => { const b = e.target.closest(".res"); if (b) goTo(+b.dataset.i); });
+sIn.addEventListener("search", () => { if (!sIn.value.trim()) sBox.hidden = true; });
+document.addEventListener("click", e => { if (!$("searchBox").contains(e.target)) sBox.hidden = true; });
 
 /* ---------- Start ---------- */
 function parseRef(str) {
@@ -735,6 +1021,7 @@ function parseRef(str) {
   return m ? idxOf(+m[1], +m[2]) : -1;
 }
 fill();
+setPlayBtn();
 let start = parseRef(location.hash);
 if (start < 0) start = parseRef(store.get("last"));
 if (start < 0) start = idxOf(12, 90);
