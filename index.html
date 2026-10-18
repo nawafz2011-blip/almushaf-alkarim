@@ -108,6 +108,19 @@ input[type=number] { width: 74px; }
 .legend i { width: 13px; height: 13px; border-radius: 50%; flex: none; box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); }
 .legend b { font-weight: 600; }
 
+/* Search (surahs by name, ayahs by text) */
+.search { position: relative; flex: 1 1 260px; max-width: 380px; }
+.search input { width: 100%; font: inherit; font-size: 14px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 18px; padding: 7px 14px; }
+.search input:focus { background: var(--surface); }
+.results { position: absolute; top: calc(100% + 6px); inset-inline: 0; min-width: min(420px, calc(100vw - 32px)); z-index: 40; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 16px 40px -18px rgba(0,0,0,.45); max-height: min(70vh, 560px); overflow: auto; padding: 6px; }
+.res-head { font-size: 12px; color: var(--muted); padding: 6px 8px 4px; }
+.res { display: block; width: 100%; text-align: start; font: inherit; color: var(--ink); background: none; border: 0; border-radius: 6px; padding: 7px 8px; cursor: pointer; }
+.res:hover, .res.on { background: var(--accent-soft); }
+.res .rr { color: var(--accent); font-family: var(--font-body); font-size: 14px; font-weight: 600; }
+.res .rt { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-family: var(--font-body); font-size: 17px; line-height: 1.9; }
+.res mark { background: var(--sel); color: inherit; border-radius: 3px; }
+.res-empty { padding: 10px 8px; color: var(--muted); font-size: 14px; }
+
 [hidden] { display: none !important; }
 .ctrls { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin-inline-start: auto; }
 
@@ -120,6 +133,10 @@ input[type=number] { width: 74px; }
 <body>
 <header class="bar">
   <div class="brand">القرآن الكريم</div>
+  <div class="search" id="searchBox">
+    <input id="searchInput" type="search" placeholder="ابحث عن سورة أو آية…" autocomplete="off" aria-label="بحث" aria-controls="searchResults">
+    <div class="results" id="searchResults" hidden></div>
+  </div>
   <span class="ctrls" id="ctrls">
     <label class="field">المصحف <select id="mushafSel"></select></label>
     <label class="field">السورة <select id="surahSel"></select></label>
@@ -726,6 +743,96 @@ document.addEventListener("keydown", e => {
   else if (e.key === " ") { e.preventDefault(); $("playBtn").click(); }
 });
 let rz; window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => render(page), 150); });
+
+/* ---------- Search: surahs by name, ayahs by text ---------- */
+// Letters are compared without diacritics, and alef/yaa/taa-marbuta variants count as one
+const norm = t => t.replace(/[ؐ-ًؚ-ٰٟۖ-ۭـ]/g, "")
+  .replace(/[أإآٱ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").replace(/ؤ/g, "و").replace(/ئ/g, "ي")
+  .replace(/\s+/g, " ").trim();
+const SURAH_N = SURAHS.map(x => norm(x[0]));
+let quranN = null, quranLoad = null;
+function loadQuran() {
+  if (!quranLoad) quranLoad = new Promise((ok, fail) => {
+    const sc = document.createElement("script");
+    sc.src = "quran.js";
+    sc.onload = () => { quranN = AY.map(o => norm(QURAN[o.s - 1][o.a - 1])); ok(); };
+    sc.onerror = () => { quranLoad = null; fail(); };
+    document.head.appendChild(sc);
+  });
+  return quranLoad;
+}
+const esc = t => t.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+// Mark the query inside the original (voweled) text: map normalized positions back to it
+function markIn(text, q) {
+  const keep = [], chars = [];
+  for (let k = 0; k < text.length; k++) {
+    const n = /\s/.test(text[k]) ? " " : norm(text[k]);
+    if (n) { chars.push(n); keep.push(k); }
+  }
+  const flat = chars.join(""), at = flat.indexOf(q);
+  if (at < 0) return esc(text);
+  const a = keep[at], endK = keep[at + q.length - 1];
+  let b = endK + 1;
+  while (b < text.length && !norm(text[b])) b++;   // keep the last letter's vowels inside the mark
+  return esc(text.slice(0, a)) + "<mark>" + esc(text.slice(a, b)) + "</mark>" + esc(text.slice(b));
+}
+const sBox = $("searchResults"), sIn = $("searchInput");
+let sItems = [], sOn = -1;
+function goTo(i) {
+  sBox.hidden = true; sIn.blur();
+  playing ? playAyah(i) : select(i);
+}
+function showResults(html) { sBox.innerHTML = html; sBox.hidden = false; sOn = -1; sItems = [...sBox.querySelectorAll(".res")]; }
+function runSearch() {
+  const raw = sIn.value.trim();
+  if (!raw) { sBox.hidden = true; return; }
+  let html = "";
+  // "2:255", "2 255" or a surah number jump straight to it
+  const ref = /^(\d{1,3})(?:\s*[:\s\-/]\s*(\d{1,3}))?$/.exec(raw.replace(/[٠-٩]/g, d => "٠١٢٣٤٥٦٧٨٩".indexOf(d)));
+  if (ref) {
+    const s = +ref[1], a = ref[2] ? +ref[2] : 1, i = idxOf(s, a);
+    if (i >= 0) html += `<button class="res" data-i="${i}"><span class="rr">سورة ${SURAHS[s - 1][0]}${ref[2] ? " · الآية " + ar(a) : ""}</span></button>`;
+  }
+  const q = norm(raw).replace(/^سوره\s+/, "");
+  if (q) {
+    const ss = [];
+    SURAH_N.forEach((n, k) => { if (n.includes(q) || n.replace(/^ال/, "").startsWith(q)) ss.push(k); });
+    if (ss.length) html += `<div class="res-head">السور</div>` + ss.slice(0, 8).map(k =>
+      `<button class="res" data-i="${surahFirst[k + 1]}"><span class="rr">${ar(k + 1)}. سورة ${SURAHS[k][0]}</span> <span class="note">· ${ar(SURAHS[k][1])} آية</span></button>`).join("");
+  }
+  if (q.length >= 2 && quranN) {
+    const hits = [];
+    for (let i = 0; i < quranN.length && hits.length < 60; i++) if (quranN[i].includes(q)) hits.push(i);
+    let total = hits.length;
+    if (total === 60) { total = 0; quranN.forEach(t => { if (t.includes(q)) total++; }); }
+    if (hits.length) html += `<div class="res-head">الآيات (${ar(total)}${total > hits.length ? "، أول " + ar(hits.length) : ""})</div>` + hits.map(i => {
+      const o = AY[i];
+      return `<button class="res" data-i="${i}"><span class="rr">${SURAHS[o.s - 1][0]} ${ar(o.a)}</span><span class="rt">${markIn(QURAN[o.s - 1][o.a - 1], q)}</span></button>`;
+    }).join("");
+  } else if (q.length >= 2 && !quranN) {
+    html += `<div class="res-empty">جارٍ تحميل نص القرآن…</div>`;
+    loadQuran().then(runSearch, () => showResults(`<div class="res-empty">تعذّر تحميل نص القرآن للبحث.</div>`));
+  }
+  showResults(html || `<div class="res-empty">لا توجد نتائج</div>`);
+}
+let sT;
+sIn.addEventListener("focus", () => { loadQuran().catch(() => {}); if (sIn.value.trim()) runSearch(); });
+sIn.addEventListener("input", () => { clearTimeout(sT); sT = setTimeout(runSearch, 150); });
+sIn.addEventListener("keydown", e => {
+  if (e.key === "Escape") { sBox.hidden = true; sIn.blur(); return; }
+  if (!sItems.length || sBox.hidden) return;
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    sOn = (sOn + (e.key === "ArrowDown" ? 1 : -1) + sItems.length) % sItems.length;
+    sItems.forEach((b, k) => b.classList.toggle("on", k === sOn));
+    sItems[sOn].scrollIntoView({ block: "nearest" });
+  } else if (e.key === "Enter") {
+    e.preventDefault();
+    goTo(+sItems[Math.max(0, sOn)].dataset.i);
+  }
+});
+sBox.addEventListener("click", e => { const b = e.target.closest(".res"); if (b) goTo(+b.dataset.i); });
+document.addEventListener("click", e => { if (!$("searchBox").contains(e.target)) sBox.hidden = true; });
 
 /* ---------- Start ---------- */
 function parseRef(str) {
