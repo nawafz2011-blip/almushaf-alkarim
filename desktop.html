@@ -882,7 +882,7 @@ function parseRef(str) {
 fill();
 let start = parseRef(location.hash);
 if (start < 0) start = parseRef(store.get("last"));
-if (start < 0) start = idxOf(12, 90);
+if (start < 0) start = idxOf(1, 1);
 render(X().pageOf[start]);
 select(start);
 </script>
