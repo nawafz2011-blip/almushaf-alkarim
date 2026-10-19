@@ -9,6 +9,18 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="القرآن الكريم">
 <title>القرآن الكريم</title>
+<script>
+// Phone and computer layouts live in two pages; a choice made with the switch button is remembered
+(function () {
+  var v = null; try { v = localStorage.getItem("view"); } catch (e) {}
+  var want = v || (window.innerWidth >= 1000 ? "desktop" : "mobile");
+  if (want === "desktop") location.replace("desktop.html" + location.hash);
+})();
+function switchView(to, url) {
+  try { localStorage.setItem("view", to); } catch (e) {}
+  location.href = url + location.hash;
+}
+</script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Noto+Naskh+Arabic:wght@400;600&display=swap">
 <style>
 :root {
@@ -188,6 +200,9 @@ input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--accent); }
     <input id="searchInput" type="search" placeholder="ابحث عن سورة أو آية…" autocomplete="off" enterkeyhint="search" aria-label="بحث" aria-controls="searchResults">
     <div class="results" id="searchResults" hidden></div>
   </div>
+  <button class="round" onclick="switchView('desktop', 'desktop.html')" title="نسخة الكمبيوتر" aria-label="نسخة الكمبيوتر">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="11" rx="1.5"/><path d="M2 19h20"/></svg>
+  </button>
   <button class="round" id="settingsBtn" aria-label="الإعدادات">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
   </button>
