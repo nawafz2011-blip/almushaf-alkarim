@@ -1038,7 +1038,6 @@ function parseRef(str) {
 fill();
 setPlayBtn();
 let start = parseRef(location.hash);
-if (start < 0) start = parseRef(store.get("last"));
 if (start < 0) start = idxOf(1, 1);
 render(X().pageOf[start]);
 select(start);
