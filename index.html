@@ -218,9 +218,6 @@ input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--accent); }
   <button class="round" onclick="switchView('desktop', 'desktop.html')" title="نسخة الكمبيوتر" aria-label="نسخة الكمبيوتر">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="11" rx="1.5"/><path d="M2 19h20"/></svg>
   </button>
-  <button class="round" id="zoomBtn" title="تكبير الصفحة ومتابعة الآية" aria-label="تكبير الصفحة ومتابعة الآية" aria-pressed="false">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5M8.5 11h5M11 8.5v5"/></svg>
-  </button>
   <button class="round" id="settingsBtn" aria-label="الإعدادات">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
   </button>
@@ -535,7 +532,7 @@ function pageSrc(m, p) {
 // paused: stopped mid-ayah by the user; pressing play carries on from the same spot
 let page = 1, cur = -1, playing = false, paused = false, playIdx = -1;
 const twoUp = () => false;   // phone layout: always one page
-let zoomOn = store.get("zoom") === "1";
+let zoomOn = false;   // zoom mode is only in the computer layout
 const ZOOM = 1.7;
 const zoomBox = () => document.querySelector(".main");
 
@@ -930,7 +927,7 @@ function setZoom(on) {
   render(page);
   requestAnimationFrame(() => follow(false));
 }
-$("zoomBtn").onclick = () => setZoom(!zoomOn);
+
 
 const spread = $("spread");
 spread.addEventListener("mouseover", e => {
@@ -1083,7 +1080,6 @@ function parseRef(str) {
   return m ? idxOf(+m[1], +m[2]) : -1;
 }
 fill();
-if (zoomOn) { document.body.classList.add("zoom"); $("zoomBtn").classList.add("on"); $("zoomBtn").setAttribute("aria-pressed", true); }
 setPlayBtn();
 let start = parseRef(location.hash);
 if (start < 0) start = idxOf(1, 1);
