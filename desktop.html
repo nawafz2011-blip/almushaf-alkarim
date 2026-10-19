@@ -77,6 +77,9 @@ input[type=number] { width: 74px; }
 }
 .page { overflow: hidden; }
 .page img { position: absolute; display: block; max-width: none; height: auto; user-select: none; -webkit-user-drag: none; }
+/* zoom mode: one large page in a box that scrolls to follow the ayah */
+body.zoom .spread { height: var(--zh, 75vh); width: var(--zw, 900px); overflow: auto; justify-content: flex-start; border-radius: 6px; }
+.btn.on, .btn.on:hover { background: var(--accent); border-color: var(--accent); color: var(--surface); }
 .hl { position: absolute; border-radius: 3px; cursor: pointer; }
 .hl.hover { background: var(--hover); }
 .hl.sel { background: var(--sel); }
@@ -166,6 +169,7 @@ input[type=number] { width: 74px; }
     <label class="field">الجزء <select id="juzSel"></select></label>
     <label class="field">الصفحة <input id="pageInput" type="number" min="1" max="604"></label>
     <label class="field">القارئ <select id="reciterSel"></select></label>
+    <button class="btn" id="zoomBtn" title="تكبير الصفحة ومتابعة الآية" aria-pressed="false">🔍 تكبير ومتابعة</button>
     <button class="btn" onclick="switchView('mobile', './')" title="نسخة الجوال">📱 نسخة الجوال</button>
   </span>
 </header>
@@ -432,7 +436,9 @@ const pageSrc = (m, p) => `pages/${m}/${p}.${MUSHAFS[m].ext}`;
 
 /* ---------- Rendering ---------- */
 let page = 1, cur = -1, playing = false, playIdx = -1;
-const twoUp = () => window.innerWidth >= 1350;
+let zoomOn = store.get("zoom") === "1";
+const twoUp = () => !zoomOn && window.innerWidth >= 1350;
+const zoomBox = () => $("spread");
 
 const ratioOf = p => { const [x0, x1, y0, y1] = frameOf(p).crop; return (x1 - x0) / (y1 - y0); };
 // Facing pages share one height, so their lines and frames sit level
@@ -440,6 +446,14 @@ function sizePages() {
   const totalRatio = shownPages().map(ratioOf).reduce((a, b) => a + b, 0);
   const availH = Math.max(260, window.innerHeight - 140);
   const availW = twoUp() ? Math.min(window.innerWidth - 32 - 340 - 18, 1120) : Math.min(window.innerWidth - 32, 560);
+  if (zoomOn) {
+    // one page, as wide as the reading column allows; the box scrolls down with the recitation
+    const zw = Math.min(window.innerWidth - 32 - (window.innerWidth > 1000 ? 340 + 18 : 0), 1000);
+    document.documentElement.style.setProperty("--zw", zw + "px");
+    document.documentElement.style.setProperty("--zh", availH + "px");
+    document.documentElement.style.setProperty("--ph", Math.floor((zw - 18) / totalRatio) + "px");
+    return;
+  }
   document.documentElement.style.setProperty("--ph", Math.floor(Math.min(availH, availW / totalRatio)) + "px");
 }
 
@@ -548,6 +562,7 @@ function paint() {
     d.classList.toggle("sel", i === cur && !(playing && i === playIdx));
     d.classList.toggle("play", playing && i === playIdx);
   });
+  requestAnimationFrame(() => follow(true));
 }
 
 const onPage = i => shownPages().includes(X().pageOf[i]);
@@ -741,6 +756,30 @@ function fill() {
 }
 const showKey = () => { $("tajweedKey").hidden = mushaf !== "tajweed"; };
 
+/* ---------- Zoom mode: a bigger page that scrolls to follow the ayah being read ---------- */
+function follow(smooth) {
+  if (!zoomOn) return;
+  const box = zoomBox(), el = document.querySelector(".hl.play") || document.querySelector(".hl.sel");
+  if (!box) return;
+  if (!el) { box.scrollTo({ top: 0, left: 0 }); return; }
+  const r = el.getBoundingClientRect(), b = box.getBoundingClientRect();
+  box.scrollTo({
+    left: box.scrollLeft + (r.left + r.width / 2) - (b.left + b.width / 2),
+    top: box.scrollTop + (r.top - b.top) - b.height / 3,
+    behavior: smooth ? "smooth" : "auto",
+  });
+}
+function setZoom(on) {
+  zoomOn = on;
+  store.set("zoom", on ? "1" : "0");
+  document.body.classList.toggle("zoom", on);
+  $("zoomBtn").classList.toggle("on", on);
+  $("zoomBtn").setAttribute("aria-pressed", on);
+  render(page);
+  requestAnimationFrame(() => follow(false));
+}
+$("zoomBtn").onclick = () => setZoom(!zoomOn);
+
 const spread = $("spread");
 spread.addEventListener("mouseover", e => {
   const d = e.target.closest(".hl"); if (!d) return;
@@ -891,6 +930,7 @@ function parseRef(str) {
   return m ? idxOf(+m[1], +m[2]) : -1;
 }
 fill();
+if (zoomOn) { document.body.classList.add("zoom"); $("zoomBtn").classList.add("on"); $("zoomBtn").setAttribute("aria-pressed", true); }
 let start = parseRef(location.hash);
 if (start < 0) start = idxOf(1, 1);
 render(X().pageOf[start]);

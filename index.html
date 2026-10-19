@@ -111,6 +111,10 @@ body {
 }
 .page img { position: absolute; display: block; max-width: none; height: auto; user-select: none; -webkit-user-select: none; -webkit-user-drag: none; -webkit-touch-callout: none; }
 .hl { position: absolute; border-radius: 3px; cursor: pointer; }
+/* zoom mode: the page is larger than the screen and the area scrolls to follow the ayah */
+body.zoom .main { flex: none; display: block; height: var(--zh, 70vh); overflow: auto; padding: 8px; -webkit-overflow-scrolling: touch; }
+body.zoom .spread { width: max-content; margin: 0 auto; touch-action: auto; }
+.round.on { background: var(--accent); border-color: var(--accent); color: #fff; }
 @media (hover: hover) { .hl.hover { background: var(--hover); } }
 .hl.sel { background: var(--sel); }
 .hl.play { background: var(--play); }
@@ -213,6 +217,9 @@ input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--accent); }
   </div>
   <button class="round" onclick="switchView('desktop', 'desktop.html')" title="نسخة الكمبيوتر" aria-label="نسخة الكمبيوتر">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="11" rx="1.5"/><path d="M2 19h20"/></svg>
+  </button>
+  <button class="round" id="zoomBtn" title="تكبير الصفحة ومتابعة الآية" aria-label="تكبير الصفحة ومتابعة الآية" aria-pressed="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5M8.5 11h5M11 8.5v5"/></svg>
   </button>
   <button class="round" id="settingsBtn" aria-label="الإعدادات">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
@@ -528,6 +535,9 @@ function pageSrc(m, p) {
 // paused: stopped mid-ayah by the user; pressing play carries on from the same spot
 let page = 1, cur = -1, playing = false, paused = false, playIdx = -1;
 const twoUp = () => false;   // phone layout: always one page
+let zoomOn = store.get("zoom") === "1";
+const ZOOM = 1.7;
+const zoomBox = () => document.querySelector(".main");
 
 const ratioOf = p => { const [x0, x1, y0, y1] = frameOf(p).crop; return (x1 - x0) / (y1 - y0); };
 // The page fills the screen width, and shrinks only if it would not fit between the top bar and the player
@@ -537,7 +547,8 @@ function sizePages() {
   const chrome = $("searchBox").parentNode.offsetHeight + $("player").offsetHeight + 16;
   const availH = Math.max(300, vh - chrome);
   const availW = Math.min(window.innerWidth, 520) - 12;
-  document.documentElement.style.setProperty("--ph", Math.floor(Math.min(availH, availW / ratio)) + "px");
+  document.documentElement.style.setProperty("--zh", Math.floor(availH) + "px");
+  document.documentElement.style.setProperty("--ph", Math.floor(zoomOn ? availW * ZOOM / ratio : Math.min(availH, availW / ratio)) + "px");
 }
 
 function pageEl(p) {
@@ -647,6 +658,7 @@ function paint() {
     d.classList.toggle("sel", i === cur && !active);
     d.classList.toggle("play", active);
   });
+  requestAnimationFrame(() => follow(true));
 }
 
 const onPage = i => shownPages().includes(X().pageOf[i]);
@@ -863,7 +875,7 @@ $("spread").addEventListener("touchstart", e => {
   const t = e.touches[0]; tx = t.clientX; ty = t.clientY; tt = Date.now();
 }, { passive: true });
 $("spread").addEventListener("touchend", e => {
-  if (multi || (window.visualViewport && window.visualViewport.scale > 1.05)) return;   // pinch-zooming, not turning
+  if (zoomOn || multi || (window.visualViewport && window.visualViewport.scale > 1.05)) return;   // panning or pinch-zooming, not turning
   const t = e.changedTouches[0], dx = t.clientX - tx, dy = t.clientY - ty;
   if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5 || Date.now() - tt > 700) return;
   turn(dx > 0 ? 1 : -1);
@@ -895,6 +907,30 @@ if ("mediaSession" in navigator) {
   on("nexttrack", () => $("nextAyah").click());
   on("previoustrack", () => $("prevAyah").click());
 }
+
+/* ---------- Zoom mode: a bigger page that scrolls to follow the ayah being read ---------- */
+function follow(smooth) {
+  if (!zoomOn) return;
+  const box = zoomBox(), el = document.querySelector(".hl.play") || document.querySelector(".hl.sel");
+  if (!box) return;
+  if (!el) { box.scrollTo({ top: 0, left: 0 }); return; }
+  const r = el.getBoundingClientRect(), b = box.getBoundingClientRect();
+  box.scrollTo({
+    left: box.scrollLeft + (r.left + r.width / 2) - (b.left + b.width / 2),
+    top: box.scrollTop + (r.top - b.top) - b.height / 3,
+    behavior: smooth ? "smooth" : "auto",
+  });
+}
+function setZoom(on) {
+  zoomOn = on;
+  store.set("zoom", on ? "1" : "0");
+  document.body.classList.toggle("zoom", on);
+  $("zoomBtn").classList.toggle("on", on);
+  $("zoomBtn").setAttribute("aria-pressed", on);
+  render(page);
+  requestAnimationFrame(() => follow(false));
+}
+$("zoomBtn").onclick = () => setZoom(!zoomOn);
 
 const spread = $("spread");
 spread.addEventListener("mouseover", e => {
@@ -1047,6 +1083,7 @@ function parseRef(str) {
   return m ? idxOf(+m[1], +m[2]) : -1;
 }
 fill();
+if (zoomOn) { document.body.classList.add("zoom"); $("zoomBtn").classList.add("on"); $("zoomBtn").setAttribute("aria-pressed", true); }
 setPlayBtn();
 let start = parseRef(location.hash);
 if (start < 0) start = idxOf(1, 1);
