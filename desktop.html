@@ -577,7 +577,7 @@ function select(i) {
   $("ref").textContent = "سورة " + SURAHS[o.s - 1][0] + " · الآية " + ar(o.a);
   markTafsir(true);
   store.set("last", o.s + "_" + o.a);
-  try { history.replaceState(null, "", "/"); } catch (e) {}   // keep the address bar clean: just mushaff.com
+  try { history.replaceState(null, "", "#aya=" + o.s + "_" + o.a); } catch (e) {}
 }
 
 /* ---------- Audio ---------- */
