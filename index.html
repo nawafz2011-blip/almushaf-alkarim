@@ -669,7 +669,7 @@ function select(i) {
   setMediaInfo();
   markTafsir(true);
   store.set("last", o.s + "_" + o.a);
-  try { history.replaceState(null, "", "#aya=" + o.s + "_" + o.a); } catch (e) {}
+  try { history.replaceState(null, "", "/"); } catch (e) {}   // keep the address bar clean: just mushaff.com
 }
 
 /* ---------- Audio ---------- */
