@@ -355,8 +355,16 @@ const coordsOf = m => MUSHAFS[m].coords || m;
 // Visible part of page p, in units: { H, crop: [x0, x1, y0, y1] }
 function frameOf(p) {
   const mz = MZ(), H = mz.H(p);
-  return { H, crop: mz.crop ? mz.crop(p, H) : [0, 456, 0, H] };
+  const crop = mz.crop ? mz.crop(p, H) : [0, 456, 0, H];
+  // zoom shows one page alone, so trim the white margin on both sides of the frame, not only the binding side
+  if (zoomOn && mz.crop && p > 2) {
+    const [sx, bx] = MUSHAF_T[coordsKey()][p - 1];
+    crop[0] = Math.max(0, sx * HAFS_TEXT[0] + bx - FRAME_ROOM - 10);
+    crop[1] = Math.min(456, sx * HAFS_TEXT[1] + bx + FRAME_ROOM + 10);
+  }
+  return { H, crop };
 }
+const coordsKey = () => mushaf;
 const OPEN_CIRCLE = { cx: 228, cy: 381, r: 108 };   // text circle of Al-Fatiha / opening of Al-Baqarah, in hafs units
 
 /* ---------- Index ---------- */
