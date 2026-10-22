@@ -214,6 +214,13 @@ input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--accent); }
 .legend b { font-weight: 600; }
 .label { font-size: 13px; color: var(--muted); }
 
+/* voice search: mic inside the search box */
+.search input { padding-inline-end: 44px; }
+.vbtn { position: absolute; inset-inline-end: 4px; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; border-radius: 50%; border: 0; background: none; color: var(--muted); display: grid; place-items: center; cursor: pointer; padding: 0; }
+.vbtn svg { width: 20px; height: 20px; }
+.vbtn.on { background: var(--accent); color: #fff; animation: vpulse 1.2s infinite; }
+@keyframes vpulse { 50% { box-shadow: 0 0 0 6px var(--accent-soft); } }
+
 [hidden] { display: none !important; }
 </style>
 </head>
@@ -222,6 +229,7 @@ input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--accent); }
 <header class="top">
   <div class="search" id="searchBox">
     <input id="searchInput" type="search" placeholder="ابحث عن سورة أو آية…" autocomplete="off" enterkeyhint="search" aria-label="بحث" aria-controls="searchResults">
+    <button class="vbtn" id="voiceBtn" type="button" title="ابحث بالصوت" aria-label="ابحث بالصوت"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
     <div class="results" id="searchResults" hidden></div>
   </div>
   <button class="round" onclick="switchView('desktop', 'desktop.html')" title="نسخة الكمبيوتر" aria-label="نسخة الكمبيوتر">
@@ -1226,6 +1234,65 @@ function stopFollow(keepNote) {
   if (!keepNote) followStatus("");
 }
 $("followBtn").onclick = () => fol ? stopFollow() : startFollow();
+
+/* ---------- Voice search: say a few words and it finds the ayah anywhere in the Quran ---------- */
+// Ayahs are ranked by how many of the heard words they contain in order, allowing small slips.
+function voiceRank(heard) {
+  const h = heard.slice(0, 14), out = [];
+  const q = h.join(" ");
+  for (let i = 0; i < quranN.length; i++) {
+    const t = quranN[i];
+    if (t.includes(q)) { out.push({ i, score: h.length + 1 }); continue; }   // exact run of words
+    const W = t.split(" ");
+    let score = 0, k = 0;
+    for (const w of h) {
+      for (let j = k; j < W.length; j++) if (same(w, W[j])) { score++; k = j + 1; break; }
+    }
+    if (score >= Math.min(2, h.length)) out.push({ i, score });
+  }
+  return out.sort((a, b) => b.score - a.score || a.i - b.i).slice(0, 15);
+}
+function voiceShow(text) {
+  const heard = norm(text).split(" ").filter(Boolean);
+  if (!heard.length) return;
+  const hits = voiceRank(heard);
+  if (!hits.length) { showResults(`<div class="res-empty">ما لقيت آية تطابق: «${esc(text)}». جرّب تقرأ كلمات أكثر.</div>`); return; }
+  showResults(`<div class="res-head">🎙 سمعت: «${esc(text)}»</div>` + hits.map(({ i }) => {
+    const o = AY[i];
+    return `<button class="res" data-i="${i}"><span class="rr">${SURAHS[o.s - 1][0]} ${ar(o.a)}</span><span class="rt">${esc(QURAN[o.s - 1][o.a - 1])}</span></button>`;
+  }).join(""));
+  // a clear best match: go straight to it; otherwise the list lets the reader pick
+  const [a, b] = hits;
+  if (a.score >= Math.min(3, heard.length) && (!b || a.score > b.score)) goTo(a.i);
+}
+let vrec = null;
+async function voiceSearch() {
+  if (vrec) { try { vrec.stop(); } catch (e) {} return; }
+  if (!SR) { showResults(`<div class="res-empty">البحث بالصوت غير مدعوم في هذا المتصفح. جرّبه في Chrome.</div>`); return; }
+  try { await loadQuran(); } catch (e) { showResults(`<div class="res-empty">تعذّر تحميل نص القرآن.</div>`); return; }
+  if (typeof fol !== "undefined" && fol) stopFollow();
+  const rec = new SR();
+  rec.lang = "ar-SA"; rec.continuous = false; rec.interimResults = true; rec.maxAlternatives = 1;
+  vrec = rec; $("voiceBtn").classList.add("on");
+  showResults(`<div class="res-empty">🎙 اقرأ جزء من الآية…</div>`);
+  let finalText = "";
+  rec.onresult = e => {
+    let t = ""; for (let r = 0; r < e.results.length; r++) t += e.results[r][0].transcript;
+    sIn.value = t;
+    if (e.results[e.results.length - 1].isFinal) finalText = t;
+  };
+  rec.onerror = e => {
+    if (e.error === "not-allowed" || e.error === "service-not-allowed") showResults(`<div class="res-empty">لازم تسمح للموقع باستخدام المايك.</div>`);
+    else if (e.error === "no-speech") showResults(`<div class="res-empty">ما سمعت شي. اضغط المايك وجرّب مرة ثانية.</div>`);
+  };
+  rec.onend = () => {
+    vrec = null; $("voiceBtn").classList.remove("on");
+    const t = finalText || sIn.value;
+    if (t.trim()) voiceShow(t);
+  };
+  try { rec.start(); } catch (e) { vrec = null; $("voiceBtn").classList.remove("on"); }
+}
+$("voiceBtn").onclick = e => { e.stopPropagation(); voiceSearch(); };
 
 /* ---------- Start ---------- */
 function parseRef(str) {
