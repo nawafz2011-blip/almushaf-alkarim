@@ -1173,32 +1173,40 @@ function followWords(from) {
   return words;
 }
 function followStatus(t) { const n = $("followNote"); n.hidden = !t; n.textContent = t || ""; }
+// Very common words (الله، الذين، من، في…) appear on every page, so on their own they must not move the highlight
+const COMMON = new Set("الله لله بالله والله الذين الذي والذين الا ان من في ما لا على هو هم قال قالوا وما ومن ولا انه انا اني كان كانوا لهم له به عن الى اذا ثم او قد لم لن يا هذا ذلك التي".split(" "));
+const weight = w => COMMON.has(w) || strip(w).length < 3 ? 0.34 : 1;
 // Best place in the page text where the last heard words end, looking a little behind and ahead of the current spot
 function followMatch(heard) {
   const W = fol.words, h = heard.slice(-6);
   let best = -1, bestScore = 0;
   for (let j = Math.max(0, fol.ptr - 4); j < Math.min(W.length, fol.ptr + 40); j++) {
     if (!h.slice(-2).some(x => same(x, W[j].w))) continue;
-    // longest in-order run of heard words found among the page words ending at j
+    // in-order heard words found among the page words ending at j, common words counting little
     let score = 0, k = j;
     for (let t = h.length - 1; t >= 0 && k >= 0 && k > j - 9; t--) {
-      for (let q = k; q > j - 9 && q >= 0; q--) if (same(h[t], W[q].w)) { score++; k = q - 1; break; }
+      for (let q = k; q > j - 9 && q >= 0; q--) if (same(h[t], W[q].w)) { score += weight(h[t]); k = q - 1; break; }
     }
     if (score > bestScore || (score === bestScore && best < fol.ptr && j >= fol.ptr)) { best = j; bestScore = score; }
   }
-  const need = h.length >= 2 ? 2 : 1;
-  return bestScore >= need ? best : -1;
+  const need = h.length >= 2 ? 1.9 : 0.9;
+  return { j: bestScore >= need ? best : -1, score: bestScore };
 }
 function followHeard(text) {
   if (!fol || !quranN) return;
   const heard = norm(text).split(" ").filter(Boolean);
   if (!heard.length) return;
-  let j = followMatch(heard);
-  if (j < 0) {
-    // not near the current spot: look for the words anywhere in the Quran and jump there
-    if (heard.length < 4 || Date.now() - (fol.jumped || 0) < 2500) return;
-    const [a] = voiceRank(heard.slice(-8));
-    if (!a || a.score < 4) return;
+  const m = followMatch(heard);
+  let j = m.j;
+  // the words read are not near the current spot, or fit somewhere else much better: find them anywhere in the Quran
+  const now = Date.now();
+  const check = heard.length >= 4 && now - (fol.jumped || 0) > 2500 && now - (fol.checked || 0) > 600;   // the whole-Quran search is heavier: not on every word
+  if (check) fol.checked = now;
+  const ga = check ? voiceRank(heard.slice(-8))[0] : null;
+  const far = ga && ga.score >= 4 && (j < 0 || ga.score >= m.score + 2) && fol.words[Math.max(0, j)].i !== ga.i;
+  if (j < 0 && !far) return;
+  if (far) {
+    const a = ga;
     fol.jumped = Date.now();
     fol.words = followWords(a.i);
     const last = heard[heard.length - 1];
