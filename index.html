@@ -125,6 +125,8 @@ body.zoom .spread { width: max-content; margin: 0 auto; touch-action: auto; }
 @media (hover: hover) { .hl.hover { background: var(--hover); } }
 .hl.sel { background: var(--sel); }
 .hl.play { background: var(--play); }
+.hl.bm { box-shadow: inset 0 -3px 0 #d4a73a; }   /* the bookmarked ayah */
+
 
 /* ---------- Bottom player ---------- */
 .player {
@@ -225,6 +227,9 @@ input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--accent); }
   <button class="round" onclick="switchView('desktop', 'desktop.html')" title="نسخة الكمبيوتر" aria-label="نسخة الكمبيوتر">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="11" rx="1.5"/><path d="M2 19h20"/></svg>
   </button>
+  <button class="round" id="bmBtn" title="الفاصل" aria-label="الفاصل">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10v18l-5-4-5 4z"/></svg>
+  </button>
   <button class="round" id="settingsBtn" aria-label="الإعدادات">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
   </button>
@@ -267,6 +272,19 @@ input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--accent); }
     </button>
   </div>
 </nav>
+</div>
+
+<!-- Bookmark sheet -->
+<div class="modal" id="bmModal" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="bmTitle">
+    <div class="dialog-head">
+      <h2 id="bmTitle">الفاصل</h2>
+      <button class="icon-btn" data-close aria-label="إغلاق">✕</button>
+    </div>
+    <button class="btn primary" id="bmSave">🔖 حفظ الفاصل عند الآية الحالية</button>
+    <div class="note" id="bmGoLabel"></div>
+    <button class="btn" id="bmGo">↩ الذهاب إلى الفاصل</button>
+  </div>
 </div>
 
 <!-- Settings sheet -->
@@ -656,11 +674,13 @@ $("tafsir").addEventListener("click", e => {
 });
 
 function paint() {
+  const bm = bmIdx();
   document.querySelectorAll(".hl").forEach(d => {
     const i = +d.dataset.i;
     const active = (playing || paused) && i === playIdx;
     d.classList.toggle("sel", i === cur && !active);
     d.classList.toggle("play", active);
+    d.classList.toggle("bm", i === bm);
   });
   requestAnimationFrame(() => follow(true));
 }
@@ -861,12 +881,13 @@ const showKey = () => { $("tajweedKey").hidden = mushaf !== "tajweed"; };
 
 /* ---------- Bottom sheets ---------- */
 function openSheet(id) { $(id).hidden = false; }
-function closeSheets() { ["settingsModal", "tafsirModal"].forEach(id => { $(id).hidden = true; }); }
-["settingsModal", "tafsirModal"].forEach(id => {
+function closeSheets() { ["settingsModal", "tafsirModal", "bmModal"].forEach(id => { $(id).hidden = true; }); }
+["settingsModal", "tafsirModal", "bmModal"].forEach(id => {
   $(id).addEventListener("click", e => { if (e.target.id === id || e.target.closest("[data-close]")) closeSheets(); });
   $(id).addEventListener("keydown", e => { if (e.key === "Escape") closeSheets(); e.stopPropagation(); });
 });
 $("settingsBtn").onclick = () => openSheet("settingsModal");
+$("bmBtn").onclick = () => { updateBm(); openSheet("bmModal"); };
 $("tafsirBtn").onclick = () => { openSheet("tafsirModal"); markTafsir(true); };
 // choosing a surah, juz or page takes you straight to it
 ["surahSel", "juzSel", "mushafSel"].forEach(id => $(id).addEventListener("change", closeSheets));
@@ -1081,12 +1102,40 @@ sBox.addEventListener("click", e => { const b = e.target.closest(".res"); if (b)
 sIn.addEventListener("search", () => { if (!sIn.value.trim()) sBox.hidden = true; });
 document.addEventListener("click", e => { if (!$("searchBox").contains(e.target)) sBox.hidden = true; });
 
+/* ---------- Bookmark (الفاصل): remember where you stopped and jump back with one tap ---------- */
+function bmIdx() {
+  const m = /(\d{1,3})_(\d{1,3})/.exec(store.get("bookmark") || "");
+  return m ? idxOf(+m[1], +m[2]) : -1;
+}
+const bmLabel = i => { const o = AY[i]; return "سورة " + SURAHS[o.s - 1][0] + " · الآية " + ar(o.a) + " · صفحة " + ar(X().pageOf[i]); };
+function updateBm() {
+  const i = bmIdx();
+  $("bmGo").disabled = i < 0;
+  $("bmGoLabel").textContent = i < 0 ? "لا يوجد فاصل محفوظ بعد" : "الفاصل: " + bmLabel(i);
+}
+function saveBookmark() {
+  const i = (playing || paused) ? playIdx : (cur >= 0 ? cur : X().first[page - 1]);
+  store.set("bookmark", AY[i].s + "_" + AY[i].a);
+  updateBm(); paint();
+  const b = $("bmSave"), t = b.textContent;
+  b.textContent = "✓ حُفظ الفاصل"; b.disabled = true;
+  setTimeout(() => { b.textContent = t; b.disabled = false; }, 1400);
+}
+function goBookmark() {
+  const i = bmIdx(); if (i < 0) return;
+  if (typeof closeSheets === "function") closeSheets();
+  playing ? playAyah(i) : select(i);
+}
+$("bmSave").onclick = saveBookmark;
+$("bmGo").onclick = goBookmark;
+
 /* ---------- Start ---------- */
 function parseRef(str) {
   const m = /(\d{1,3})[_:-](\d{1,3})/.exec(str || "");
   return m ? idxOf(+m[1], +m[2]) : -1;
 }
 fill();
+updateBm();
 setPlayBtn();
 let start = parseRef(location.hash);
 if (start < 0) start = idxOf(1, 1);

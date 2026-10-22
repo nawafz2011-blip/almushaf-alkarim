@@ -95,6 +95,8 @@ body.zoom .spread { height: var(--zh, 75vh); width: var(--zw, 900px); overflow: 
 .hl.hover { background: var(--hover); }
 .hl.sel { background: var(--sel); }
 .hl.play { background: var(--play); }
+.hl.bm { box-shadow: inset 0 -3px 0 #d4a73a; }   /* the bookmarked ayah */
+
 .pager { display: flex; gap: 10px; align-items: center; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
 
 .btn {
@@ -209,6 +211,14 @@ body.zoom .spread { height: var(--zh, 75vh); width: var(--zw, 900px); overflow: 
         <button class="btn" id="repeatBtn">⟳ إعدادات التكرار</button>
       </div>
       <div class="note" id="audioNote">اضغط على أي آية في الصفحة ثم شغّل.</div>
+    </section>
+    <section class="panel">
+      <div class="label">الفاصل</div>
+      <div class="row">
+        <button class="btn" id="bmSave">🔖 حفظ الفاصل</button>
+        <button class="btn" id="bmGo">↩ الرجوع للفاصل</button>
+      </div>
+      <div class="note" id="bmGoLabel"></div>
     </section>
     <section class="panel" id="tajweedKey" hidden>
       <div class="label">ألوان التجويد</div>
@@ -576,10 +586,12 @@ $("tafsir").addEventListener("click", e => {
 });
 
 function paint() {
+  const bm = bmIdx();
   document.querySelectorAll(".hl").forEach(d => {
     const i = +d.dataset.i;
     d.classList.toggle("sel", i === cur && !(playing && i === playIdx));
     d.classList.toggle("play", playing && i === playIdx);
+    d.classList.toggle("bm", i === bm);
   });
   requestAnimationFrame(() => follow(true));
 }
@@ -943,12 +955,40 @@ sIn.addEventListener("keydown", e => {
 sBox.addEventListener("click", e => { const b = e.target.closest(".res"); if (b) goTo(+b.dataset.i); });
 document.addEventListener("click", e => { if (!$("searchBox").contains(e.target)) sBox.hidden = true; });
 
+/* ---------- Bookmark (الفاصل): remember where you stopped and jump back with one tap ---------- */
+function bmIdx() {
+  const m = /(\d{1,3})_(\d{1,3})/.exec(store.get("bookmark") || "");
+  return m ? idxOf(+m[1], +m[2]) : -1;
+}
+const bmLabel = i => { const o = AY[i]; return "سورة " + SURAHS[o.s - 1][0] + " · الآية " + ar(o.a) + " · صفحة " + ar(X().pageOf[i]); };
+function updateBm() {
+  const i = bmIdx();
+  $("bmGo").disabled = i < 0;
+  $("bmGoLabel").textContent = i < 0 ? "لا يوجد فاصل محفوظ بعد" : "الفاصل: " + bmLabel(i);
+}
+function saveBookmark() {
+  const i = (playing || paused) ? playIdx : (cur >= 0 ? cur : X().first[page - 1]);
+  store.set("bookmark", AY[i].s + "_" + AY[i].a);
+  updateBm(); paint();
+  const b = $("bmSave"), t = b.textContent;
+  b.textContent = "✓ حُفظ الفاصل"; b.disabled = true;
+  setTimeout(() => { b.textContent = t; b.disabled = false; }, 1400);
+}
+function goBookmark() {
+  const i = bmIdx(); if (i < 0) return;
+  if (typeof closeSheets === "function") closeSheets();
+  playing ? playAyah(i) : select(i);
+}
+$("bmSave").onclick = saveBookmark;
+$("bmGo").onclick = goBookmark;
+
 /* ---------- Start ---------- */
 function parseRef(str) {
   const m = /(\d{1,3})[_:-](\d{1,3})/.exec(str || "");
   return m ? idxOf(+m[1], +m[2]) : -1;
 }
 fill();
+updateBm();
 if (zoomOn) { document.body.classList.add("zoom"); $("zoomBtn").classList.add("on"); $("zoomBtn").setAttribute("aria-pressed", true); }
 let start = parseRef(location.hash);
 if (start < 0) start = idxOf(1, 1);
