@@ -1031,7 +1031,7 @@ function followMatch(heard) {
   const W = fol.words, h = heard.slice(-6);
   let best = -1, bestScore = 0;
   for (let j = Math.max(0, fol.ptr - 4); j < Math.min(W.length, fol.ptr + 40); j++) {
-    if (!h.slice(-2).some(x => same(x, W[j].w))) continue;
+    if (!h.slice(-2).some(x => weight(x) === 1 && same(x, W[j].w))) continue;   // anchor on a meaningful word
     // in-order heard words found among the page words ending at j, common words counting little
     let score = 0, k = j;
     for (let t = h.length - 1; t >= 0 && k >= 0 && k > j - 9; t--) {
@@ -1053,7 +1053,8 @@ function followHeard(text) {
   const check = heard.length >= 4 && now - (fol.jumped || 0) > 2500 && now - (fol.checked || 0) > 600;   // the whole-Quran search is heavier: not on every word
   if (check) fol.checked = now;
   const ga = check ? voiceRank(heard.slice(-8))[0] : null;
-  const far = ga && ga.score >= 4 && (j < 0 || ga.score >= m.score + 2) && fol.words[Math.max(0, j)].i !== ga.i;
+  const near = j >= 0 && Math.abs(fol.words[j].i - ga?.i) <= 1;
+  const far = ga && ga.score >= 4 && !near && (j < 0 || ga.score > m.score + 1);
   if (j < 0 && !far) return;
   if (far) {
     const a = ga;
@@ -1147,20 +1148,34 @@ function voiceShow(text) {
   if (a.score >= Math.min(3, heard.length) && (!b || a.score > b.score)) goTo(a.i);
 }
 let vrec = null;
+// Ayahs whose text contains the words read so far, in that order
+const liveHits = q => { const out = []; for (let i = 0; i < quranN.length && out.length < 61; i++) if (quranN[i].includes(q)) out.push(i); return out; };
 async function voiceSearch() {
   if (vrec) { try { vrec.stop(); } catch (e) {} return; }
   if (!SR) { showResults(`<div class="res-empty">البحث بالصوت غير مدعوم في هذا المتصفح. جرّبه في Chrome.</div>`); return; }
   try { await loadQuran(); } catch (e) { showResults(`<div class="res-empty">تعذّر تحميل نص القرآن.</div>`); return; }
   if (typeof fol !== "undefined" && fol) stopFollow();
   const rec = new SR();
-  rec.lang = "ar-SA"; rec.continuous = false; rec.interimResults = true; rec.maxAlternatives = 1;
+  rec.lang = "ar-SA"; rec.continuous = true; rec.interimResults = true; rec.maxAlternatives = 1;
   vrec = rec; $("voiceBtn").classList.add("on");
-  showResults(`<div class="res-empty">🎙 اقرأ جزء من الآية…</div>`);
-  let finalText = "";
+  sIn.value = "";
+  showResults(`<div class="res-empty">🎙 اقرأ الآية… وأكمل القراءة لين تبقى آية وحدة</div>`);
+  let done = false, text = "";
   rec.onresult = e => {
-    let t = ""; for (let r = 0; r < e.results.length; r++) t += e.results[r][0].transcript;
-    sIn.value = t;
-    if (e.results[e.results.length - 1].isFinal) finalText = t;
+    if (done) return;
+    text = ""; for (let r = 0; r < e.results.length; r++) text += e.results[r][0].transcript;
+    text = text.trim();
+    sIn.value = text;                       // the words appear in the search box as you read
+    const q = norm(text).replace(/^سوره\s+/, "");
+    if (q.split(" ").length < 2) return;
+    runSearch();                            // the list narrows with every word
+    const hits = liveHits(q);
+    if (hits.length === 1 && q.split(" ").length >= 3) {   // only one ayah left: that is it
+      done = true;
+      showResults(`<div class="res-head">✅ وجدتها</div><button class="res" data-i="${hits[0]}"><span class="rr">${SURAHS[AY[hits[0]].s - 1][0]} ${ar(AY[hits[0]].a)}</span><span class="rt">${markIn(QURAN[AY[hits[0]].s - 1][AY[hits[0]].a - 1], q)}</span></button>`);
+      try { rec.stop(); } catch (e) {}
+      setTimeout(() => goTo(hits[0]), 700);
+    }
   };
   rec.onerror = e => {
     if (e.error === "not-allowed" || e.error === "service-not-allowed") showResults(`<div class="res-empty">لازم تسمح للموقع باستخدام المايك.</div>`);
@@ -1168,9 +1183,11 @@ async function voiceSearch() {
   };
   rec.onend = () => {
     vrec = null; $("voiceBtn").classList.remove("on");
-    const t = finalText || sIn.value;
-    if (t.trim()) voiceShow(t);
-    else showResults(`<div class="res-empty">ما سمعت شي. تأكد إن المايك شغّال ومسموح للموقع، وجرّب في Chrome.</div>`);
+    if (done) return;
+    const t = text || sIn.value;
+    if (!t.trim()) { showResults(`<div class="res-empty">ما سمعت شي. تأكد إن المايك شغّال ومسموح للموقع، وجرّب في Chrome.</div>`); return; }
+    // stopped before one ayah was left: if the exact words match nothing (a misheard word), fall back to close matches
+    if (liveHits(norm(t)).length) runSearch(); else voiceShow(t);
   };
   try { rec.start(); } catch (e) { vrec = null; $("voiceBtn").classList.remove("on"); }
 }
