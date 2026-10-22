@@ -254,7 +254,12 @@ input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--accent); }
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
     </button>
   </div>
+  <div class="note" id="followNote" hidden style="text-align:center;padding:2px 0 6px"></div>
   <div class="pctrl">
+    <button class="pbtn" id="followBtn" title="الموقع يسمعك ويتابع معك">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+      <span>تابعني</span>
+    </button>
     <button class="pbtn" id="repeatBtn">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l3 3-3 3"/><path d="M4 11V9a4 4 0 0 1 4-4h12"/><path d="M7 22l-3-3 3-3"/><path d="M20 13v2a4 4 0 0 1-4 4H4"/></svg>
       <span>التكرار</span>
@@ -1128,6 +1133,99 @@ function goBookmark() {
 }
 $("bmSave").onclick = saveBookmark;
 $("bmGo").onclick = goBookmark;
+
+/* ---------- Follow-me (تابعني): listen to the reader through the mic and move the highlight with them ---------- */
+// The browser's speech recognition is made for everyday speech, so recitation is matched loosely:
+// the heard words are compared, letters only and allowing small slips, with the words just ahead on the page.
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let fol = null;   // { rec, words: [{ w, i }], ptr }
+const lev = (a, b) => {
+  if (a === b) return 0;
+  const m = a.length, n = b.length; if (!m || !n) return m || n;
+  let prev = Array.from({ length: n + 1 }, (_, k) => k);
+  for (let x = 1; x <= m; x++) {
+    const cur = [x];
+    for (let y = 1; y <= n; y++) cur[y] = Math.min(prev[y] + 1, cur[y - 1] + 1, prev[y - 1] + (a[x - 1] === b[y - 1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[n];
+};
+const strip = w => w.replace(/^(و|ف)?(ال)/, "").replace(/ا/g, "");
+function same(a, b) {
+  if (a === b) return true;
+  const x = strip(a), y = strip(b);
+  if (x === y) return true;
+  const L = Math.max(x.length, y.length);
+  return L >= 3 && lev(x, y) / L <= 0.34;
+}
+// Words of the next ayahs, from the ayah where reading starts
+function followWords(from) {
+  const words = [];
+  for (let i = from; i < Math.min(AY.length, from + 60); i++) quranN[i].split(" ").forEach(w => w && words.push({ w, i }));
+  return words;
+}
+function followStatus(t) { const n = $("followNote"); n.hidden = !t; n.textContent = t || ""; }
+// Best place in the page text where the last heard words end, looking a little behind and ahead of the current spot
+function followMatch(heard) {
+  const W = fol.words, h = heard.slice(-6);
+  let best = -1, bestScore = 0;
+  for (let j = Math.max(0, fol.ptr - 4); j < Math.min(W.length, fol.ptr + 40); j++) {
+    if (!h.slice(-2).some(x => same(x, W[j].w))) continue;
+    // longest in-order run of heard words found among the page words ending at j
+    let score = 0, k = j;
+    for (let t = h.length - 1; t >= 0 && k >= 0 && k > j - 9; t--) {
+      for (let q = k; q > j - 9 && q >= 0; q--) if (same(h[t], W[q].w)) { score++; k = q - 1; break; }
+    }
+    if (score > bestScore || (score === bestScore && best < fol.ptr && j >= fol.ptr)) { best = j; bestScore = score; }
+  }
+  const need = h.length >= 2 ? 2 : 1;
+  return bestScore >= need ? best : -1;
+}
+function followHeard(text) {
+  if (!fol || !quranN) return;
+  const heard = norm(text).split(" ").filter(Boolean);
+  if (!heard.length) return;
+  const j = followMatch(heard);
+  if (j < 0) return;
+  fol.ptr = j + 1;
+  const i = fol.words[j].i;
+  if (i !== cur) select(i);
+  if (fol.ptr > fol.words.length - 30) {   // nearing the end of the loaded words: load the next stretch from this ayah
+    const off = j - fol.words.findIndex(x => x.i === i);
+    fol.words = followWords(i); fol.ptr = off + 1;
+  }
+}
+async function startFollow() {
+  if (!SR) { followStatus("ميزة «تابعني» غير مدعومة في هذا المتصفح. جرّبها في Chrome."); return; }
+  try { await loadQuran(); } catch (e) { followStatus("تعذّر تحميل نص القرآن. تأكد من الاتصال."); return; }
+  if (playing) (typeof pause === "function" ? pause : stop)();
+  const from = cur >= 0 ? cur : X().first[page - 1];
+  select(from);
+  const rec = new SR();
+  rec.lang = "ar-SA"; rec.continuous = true; rec.interimResults = true; rec.maxAlternatives = 1;
+  fol = { rec, words: followWords(from), ptr: 0 };
+  rec.onresult = e => {
+    let t = "";
+    for (let r = Math.max(0, e.results.length - 3); r < e.results.length; r++) t += " " + e.results[r][0].transcript;
+    followHeard(t);
+    followStatus("🎙 أتابعك… " + t.trim().split(/\s+/).slice(-5).join(" "));
+  };
+  rec.onerror = e => {
+    if (e.error === "not-allowed" || e.error === "service-not-allowed") { followStatus("لازم تسمح للموقع باستخدام المايك."); stopFollow(true); }
+  };
+  rec.onend = () => { if (fol && fol.rec === rec) { try { rec.start(); } catch (e) {} } };   // keep listening after pauses
+  try { rec.start(); } catch (e) {}
+  $("followBtn").classList.add("on");
+  followStatus("🎙 اقرأ من: سورة " + SURAHS[AY[from].s - 1][0] + " · الآية " + ar(AY[from].a));
+}
+function stopFollow(keepNote) {
+  if (!fol) return;
+  const r = fol.rec; fol = null;
+  try { r.abort(); } catch (e) {}
+  $("followBtn").classList.remove("on");
+  if (!keepNote) followStatus("");
+}
+$("followBtn").onclick = () => fol ? stopFollow() : startFollow();
 
 /* ---------- Start ---------- */
 function parseRef(str) {
