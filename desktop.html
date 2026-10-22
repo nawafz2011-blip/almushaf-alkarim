@@ -1043,8 +1043,19 @@ function followHeard(text) {
   if (!fol || !quranN) return;
   const heard = norm(text).split(" ").filter(Boolean);
   if (!heard.length) return;
-  const j = followMatch(heard);
-  if (j < 0) return;
+  let j = followMatch(heard);
+  if (j < 0) {
+    // not near the current spot: look for the words anywhere in the Quran and jump there
+    if (heard.length < 4 || Date.now() - (fol.jumped || 0) < 2500) return;
+    const [a] = voiceRank(heard.slice(-8));
+    if (!a || a.score < 4) return;
+    fol.jumped = Date.now();
+    fol.words = followWords(a.i);
+    const last = heard[heard.length - 1];
+    let k = -1;
+    fol.words.slice(0, 60).forEach((x, n) => { if (k < 0 && n > 0 && same(last, x.w) && x.i <= a.i + 1) k = n; });
+    j = k >= 0 ? k : 0;
+  }
   fol.ptr = j + 1;
   const i = fol.words[j].i;
   if (i !== cur) select(i);
@@ -1088,20 +1099,32 @@ $("followBtn").onclick = () => fol ? stopFollow() : startFollow();
 /* ---------- Voice search: say a few words and it finds the ayah anywhere in the Quran ---------- */
 // Ayahs are ranked by how many of the heard words they contain in order, allowing small slips.
 function voiceRank(heard) {
-  const h = heard.slice(0, 14), out = [];
-  const q = h.join(" ");
+  const h = heard.slice(0, 14), out = [], q = h.join(" ");
+  if (!quranW) quranW = quranN.map(t => t.split(" "));
   for (let i = 0; i < quranN.length; i++) {
-    const t = quranN[i];
-    if (t.includes(q)) { out.push({ i, score: h.length + 1 }); continue; }   // exact run of words
-    const W = t.split(" ");
-    let score = 0, k = 0;
-    for (const w of h) {
-      for (let j = k; j < W.length; j++) if (same(w, W[j])) { score++; k = j + 1; break; }
+    if (quranN[i].includes(q)) { out.push({ i, score: h.length + 1 }); continue; }   // exact run of words
+    // this ayah followed by the next one, so a reading that crosses into the next ayah still matches
+    const W = i + 1 < quranW.length ? quranW[i].concat(quranW[i + 1]) : quranW[i], n0 = quranW[i].length;
+    let best = 0;
+    for (let s0 = 0; s0 < n0; s0++) {
+      // start where one of the first heard words is, then follow the heard words closely (small gaps only)
+      let t0 = -1;
+      for (let t = 0; t < Math.min(3, h.length); t++) if (same(h[t], W[s0])) { t0 = t; break; }
+      if (t0 < 0) continue;
+      let score = 1, k = s0 + 1, miss = 0;
+      for (let t = t0 + 1; t < h.length && k < W.length; t++) {
+        let f = -1;
+        for (let x = k; x < Math.min(W.length, k + 3); x++) if (same(h[t], W[x])) { f = x; break; }
+        if (f < 0) { if (++miss > 2) break; continue; }
+        score++; k = f + 1;
+      }
+      if (score > best) best = score;
     }
-    if (score >= Math.min(2, h.length)) out.push({ i, score });
+    if (best >= Math.min(3, h.length)) out.push({ i, score: best });
   }
   return out.sort((a, b) => b.score - a.score || a.i - b.i).slice(0, 15);
 }
+let quranW = null;
 function voiceShow(text) {
   const heard = norm(text).split(" ").filter(Boolean);
   if (!heard.length) return;
@@ -1139,6 +1162,7 @@ async function voiceSearch() {
     vrec = null; $("voiceBtn").classList.remove("on");
     const t = finalText || sIn.value;
     if (t.trim()) voiceShow(t);
+    else showResults(`<div class="res-empty">ما سمعت شي. تأكد إن المايك شغّال ومسموح للموقع، وجرّب في Chrome.</div>`);
   };
   try { rec.start(); } catch (e) { vrec = null; $("voiceBtn").classList.remove("on"); }
 }
