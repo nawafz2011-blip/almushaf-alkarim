@@ -1142,6 +1142,33 @@ function goBookmark() {
 $("bmSave").onclick = saveBookmark;
 $("bmGo").onclick = goBookmark;
 
+/* ---------- Isti'adha and basmala: recognised and skipped, so they don't send the search or the highlight elsewhere ---------- */
+const OPENINGS = [
+  { kind: "t", w: "اعوذ بالله من الشيطان الرجيم".split(" ") },
+  { kind: "t", w: "اعوذ بالله السميع العليم من الشيطان الرجيم".split(" ") },
+  { kind: "b", w: "بسم الله الرحمن الرحيم".split(" "), lead: true },
+];
+// Removes the isti'adha wherever it is and a basmala at the start. A part still being said (at the end) is
+// skipped too, but a part followed by other words is kept: «اعوذ بالله ان اكون…» (البقرة ٦٧) is an ayah.
+function skipOpening(words, keepBasmala) {
+  const out = [], seen = { t: false, b: false };
+  for (let k = 0; k < words.length; ) {
+    let skip = 0;
+    for (const o of OPENINGS) {
+      if (o.kind === "b" && (keepBasmala || out.length)) continue;
+      let n = 0;
+      while (n < o.w.length && k + n < words.length && same(words[k + n], o.w[n])) n++;
+      if (n === o.w.length || (n >= 1 && k + n === words.length && (n >= 2 || o.kind === "t"))) {
+        if (n > skip) { skip = n; seen[o.kind] = true; }
+      }
+    }
+    if (skip) { k += skip; continue; }
+    out.push(words[k]); k++;
+  }
+  return { words: out, taawudh: seen.t, basmala: seen.b };
+}
+const openingNote = o => (o.taawudh ? "أعوذ بالله من الشيطان الرجيم ✓ " : "") + (o.basmala ? "بسم الله الرحمن الرحيم ✓ " : "");
+
 /* ---------- Follow-me (تابعني): listen to the reader through the mic and move the highlight with them ---------- */
 // The browser's speech recognition is made for everyday speech, so recitation is matched loosely:
 // the heard words are compared, letters only and allowing small slips, with the words just ahead on the page.
@@ -1194,7 +1221,10 @@ function followMatch(heard) {
 }
 function followHeard(text) {
   if (!fol || !quranN) return;
-  const heard = norm(text).split(" ").filter(Boolean);
+  // at the opening of al-Fatiha the basmala is the first ayah, so it is followed there
+  const o = skipOpening(norm(text).split(" ").filter(Boolean), cur === 0);
+  const heard = o.words;
+  fol.opening = heard.length ? "" : openingNote(o);   // only the isti'adha so far: say it was heard
   if (!heard.length) return;
   const m = followMatch(heard);
   let j = m.j;
@@ -1236,7 +1266,7 @@ async function startFollow() {
     let t = "";
     for (let r = Math.max(0, e.results.length - 3); r < e.results.length; r++) t += " " + e.results[r][0].transcript;
     followHeard(t);
-    followStatus("🎙 أتابعك… " + t.trim().split(/\s+/).slice(-5).join(" "));
+    if (fol) followStatus("🎙 " + (fol.opening || "أتابعك… " + t.trim().split(/\s+/).slice(-5).join(" ")));
   };
   rec.onerror = e => {
     if (e.error === "not-allowed" || e.error === "service-not-allowed") { followStatus("لازم تسمح للموقع باستخدام المايك."); stopFollow(true); }
@@ -1315,8 +1345,11 @@ async function voiceSearch() {
     if (done) return;
     text = ""; for (let r = 0; r < e.results.length; r++) text += e.results[r][0].transcript;
     text = text.trim();
+    const o = skipOpening(norm(text).split(" ").filter(Boolean));
+    if (o.taawudh || o.basmala) text = o.words.join(" ");   // the isti'adha / basmala is not part of the search
     sIn.value = text;                       // the words appear in the search box as you read
     const q = norm(text).replace(/^سوره\s+/, "");
+    if (!q && (o.taawudh || o.basmala)) { showResults(`<div class="res-empty">🎙 ${openingNote(o)}— أكمل قراءة الآية…</div>`); return; }
     if (q.split(" ").length < 2) return;
     runSearch();                            // the list narrows with every word
     const hits = liveHits(q);
