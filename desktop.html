@@ -1061,11 +1061,16 @@ function same(a, b) {
   return L >= 3 && lev(x, y) / L <= 0.34;
 }
 // Words of the next ayahs, from the ayah where reading starts
+// The words followed: the page(s) in view and the page after, since a reader almost always goes on reading there
 function followWords(from) {
+  const P = X().pageOf[from], sp = shownPages(), ps = sp.includes(P) ? sp : [P];
+  const lo = Math.min(...ps), hi = Math.min(604, Math.max(...ps) + 1);
+  const a = X().first[lo - 1], b = (X().first[hi] ?? AY.length) - 1;
   const words = [];
-  for (let i = from; i < Math.min(AY.length, from + 60); i++) quranN[i].split(" ").forEach(w => w && words.push({ w, i }));
+  for (let i = a; i <= b; i++) quranN[i].split(" ").forEach(w => w && words.push({ w, i }));
   return words;
 }
+const followAt = i => Math.max(0, fol.words.findIndex(x => x.i === i));
 function followStatus(t) {
   const n = $("followNote"); n.hidden = !t; n.textContent = "";
   if (!t) return;
@@ -1080,14 +1085,15 @@ const weight = w => COMMON.has(w) || strip(w).length < 3 ? 0.34 : 1;
 function followMatch(heard) {
   const W = fol.words, h = heard.slice(-6);
   let best = -1, bestScore = 0;
-  for (let j = Math.max(0, fol.ptr - 4); j < Math.min(W.length, fol.ptr + 40); j++) {
+  const dist = j => j >= fol.ptr - 4 ? j - fol.ptr : 1000 + fol.ptr - j;   // ahead of the reader first, then back
+  for (let j = 0; j < W.length; j++) {
     if (!h.slice(-2).some(x => weight(x) === 1 && same(x, W[j].w))) continue;   // anchor on a meaningful word
     // in-order heard words found among the page words ending at j, common words counting little
     let score = 0, k = j;
     for (let t = h.length - 1; t >= 0 && k >= 0 && k > j - 9; t--) {
       for (let q = k; q > j - 9 && q >= 0; q--) if (same(h[t], W[q].w)) { score += weight(h[t]); k = q - 1; break; }
     }
-    if (score > bestScore || (score === bestScore && best < fol.ptr && j >= fol.ptr)) { best = j; bestScore = score; }
+    if (score > bestScore || (score === bestScore && dist(j) < dist(best))) { best = j; bestScore = score; }
   }
   const need = h.length >= 2 ? 1.9 : 0.9;
   return { j: bestScore >= need ? best : -1, score: bestScore };
@@ -1103,29 +1109,30 @@ function followHeard(text) {
   if (!heard.length) return;
   const m = followMatch(heard);
   let j = m.j;
-  // the words read are not near the current spot, or fit somewhere else much better: find them anywhere in the Quran
+  // leave these pages only when sure: the words are not here (or fit here only weakly) and fit
+  // one place elsewhere in the Quran clearly
   const now = Date.now();
-  const check = heard.length >= 4 && now - (fol.jumped || 0) > 2500 && now - (fol.checked || 0) > 600;   // the whole-Quran search is heavier: not on every word
+  const check = heard.length >= 4 && (j < 0 || m.score < 3) && now - (fol.jumped || 0) > 2500 && now - (fol.checked || 0) > 600;   // the whole-Quran search is heavier: not on every word
   if (check) fol.checked = now;
-  const ga = check ? voiceRank(heard.slice(-8))[0] : null;
-  const near = j >= 0 && Math.abs(fol.words[j].i - ga?.i) <= 1;
-  const far = ga && ga.score >= 4 && !near && (j < 0 || ga.score > m.score + 1);
+  const r = check ? voiceRank(heard.slice(-8)) : [], ga = r[0];
+  const sure = ga && (!r[1] || r[1].score < ga.score) && !fol.words.some(x => x.i === ga.i);
+  const far = sure && (j < 0 ? ga.score >= 4 : ga.score >= 6);
   if (j < 0 && !far) return;
   if (far) {
     const a = ga;
     fol.jumped = Date.now();
     fol.words = followWords(a.i);
-    const last = heard[heard.length - 1];
+    const last = heard[heard.length - 1], base = followAt(a.i);
     let k = -1;
-    fol.words.slice(0, 60).forEach((x, n) => { if (k < 0 && n > 0 && same(last, x.w) && x.i <= a.i + 1) k = n; });
-    j = k >= 0 ? k : 0;
+    fol.words.slice(base, base + 60).forEach((x, n) => { if (k < 0 && n > 0 && same(last, x.w) && x.i <= a.i + 1) k = base + n; });
+    j = k >= 0 ? k : base;
   }
   fol.ptr = j + 1;
   const i = fol.words[j].i;
   if (i !== cur) select(i);
-  if (fol.ptr > fol.words.length - 30) {   // nearing the end of the loaded words: load the next stretch from this ayah
-    const off = j - fol.words.findIndex(x => x.i === i);
-    fol.words = followWords(i); fol.ptr = off + 1;
+  if (fol.ptr > fol.words.length - 30) {   // nearing the end of the loaded pages: load from this ayah's page on
+    const off = j - followAt(i);
+    fol.words = followWords(i); fol.ptr = followAt(i) + off + 1;
   }
 }
 // What the line under the controls says: ابدأ القراءة → the isti'adha / basmala when heard →
@@ -1151,6 +1158,7 @@ async function startFollow() {
   const rec = new SR();
   rec.lang = "ar-SA"; rec.continuous = true; rec.interimResults = true; rec.maxAlternatives = 1;
   fol = { rec, words: followWords(from), ptr: 0 };
+  fol.ptr = followAt(from);
   rec.onresult = e => {
     let t = "";
     for (let r = Math.max(0, e.results.length - 3); r < e.results.length; r++) t += " " + e.results[r][0].transcript;
