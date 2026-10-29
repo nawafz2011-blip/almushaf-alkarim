@@ -92,6 +92,8 @@ input[type=number] { width: 74px; }
 .page img { position: absolute; display: block; max-width: none; height: auto; user-select: none; -webkit-user-drag: none; }
 /* zoom mode: one large page in a box that scrolls to follow the ayah */
 body.zoom .spread { height: var(--zh, 75vh); width: var(--zw, 900px); overflow: auto; justify-content: flex-start; border-radius: 6px; }
+/* room above and below the page so an ayah at the very top or bottom can still come to the middle */
+body.zoom .spread { padding-block: calc(var(--zh, 75vh) * 0.35); align-items: flex-start; }
 .btn.on, .btn.on:hover { background: var(--accent); border-color: var(--accent); color: var(--surface); }
 .hl { position: absolute; border-radius: 3px; cursor: pointer; }
 .hl.hover { background: var(--hover); }
@@ -802,13 +804,23 @@ const showKey = () => { $("tajweedKey").hidden = mushaf !== "tajweed"; };
 /* ---------- Zoom mode: a bigger page that scrolls to follow the ayah being read ---------- */
 function follow(smooth) {
   if (!zoomOn) return;
-  const box = zoomBox(), el = document.querySelector(".hl.play") || document.querySelector(".hl.sel");
+  const box = zoomBox();
   if (!box) return;
-  if (!el) { box.scrollTo({ top: 0, left: 0 }); return; }
-  const r = el.getBoundingClientRect(), b = box.getBoundingClientRect();
+  // all the boxes of the ayah being read (or selected): an ayah can span several lines
+  const cls = document.querySelector(".hl.play") ? ".hl.play" : ".hl.sel";
+  const els = [...document.querySelectorAll(cls)];
+  if (!els.length) { box.scrollTo({ top: 0, left: 0 }); return; }
+  const b = box.getBoundingClientRect();
+  const top = Math.min(...els.map(e => e.getBoundingClientRect().top));
+  const bottom = Math.max(...els.map(e => e.getBoundingClientRect().bottom));
+  const left = Math.min(...els.map(e => e.getBoundingClientRect().left));
+  const right = Math.max(...els.map(e => e.getBoundingClientRect().right));
+  const h = bottom - top, margin = Math.min(60, b.height * 0.08);
+  // the whole ayah sits in the middle; one longer than the box starts near the top so its beginning shows
+  const y = h <= b.height - 2 * margin ? (top + bottom) / 2 - (b.top + b.height / 2) : top - b.top - margin;
   box.scrollTo({
-    left: box.scrollLeft + (r.left + r.width / 2) - (b.left + b.width / 2),
-    top: box.scrollTop + (r.top - b.top) - b.height / 3,
+    left: box.scrollLeft + (left + right) / 2 - (b.left + b.width / 2),
+    top: box.scrollTop + y,
     behavior: smooth ? "smooth" : "auto",
   });
 }
