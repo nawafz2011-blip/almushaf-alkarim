@@ -1066,7 +1066,13 @@ function followWords(from) {
   for (let i = from; i < Math.min(AY.length, from + 60); i++) quranN[i].split(" ").forEach(w => w && words.push({ w, i }));
   return words;
 }
-function followStatus(t) { const n = $("followNote"); n.hidden = !t; n.textContent = t || ""; }
+function followStatus(t) {
+  const n = $("followNote"); n.hidden = !t; n.textContent = "";
+  if (!t) return;
+  const mic = t.startsWith("🎙");
+  if (mic) { t = t.replace(/^🎙\s*/, ""); n.insertAdjacentHTML("beforeend", '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-inline-end:5px"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>'); }
+  n.append(t);
+}
 // Very common words (الله، الذين، من، في…) appear on every page, so on their own they must not move the highlight
 const COMMON = new Set("الله لله بالله والله الذين الذي والذين الا ان من في ما لا على هو هم قال قالوا وما ومن ولا انه انا اني كان كانوا لهم له به عن الى اذا ثم او قد لم لن يا هذا ذلك التي".split(" "));
 const weight = w => COMMON.has(w) || strip(w).length < 3 ? 0.34 : 1;
