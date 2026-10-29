@@ -292,6 +292,24 @@ input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--accent); }
 </nav>
 </div>
 
+<!-- Follow-me notice: shown before the first use, until "don't remind me" is ticked -->
+<div class="modal" id="followModal" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="followTitle">
+    <div class="dialog-head">
+      <h2 id="followTitle">🎙 تابعني · نسخة تجريبية</h2>
+      <button class="icon-btn" id="followCancelX" aria-label="إغلاق">✕</button>
+    </div>
+    <div style="line-height:1.9">
+      اقرأ بصوتك، والموقع يسمعك ويتابع معك آية آية.<br>
+      هذه الميزة <b>تجريبية</b>، وقد تتأخر أو تخطئ أحيانًا، خصوصًا مع المد الطويل أو الضوضاء.
+      <div class="note" style="margin-top:6px;line-height:1.9">• تحتاج إذن المايك والاتصال بالإنترنت<br>• تعمل بشكل أفضل في Chrome<br>• اقرأ مرتّلًا وبوضوح</div>
+    </div>
+    <label style="display:flex;flex-direction:row;align-items:center;gap:10px;font-size:15px;cursor:pointer"><input type="checkbox" id="followNoRemind" style="width:20px;height:20px;margin:0"> لا تذكّرني مرة أخرى</label>
+    <button class="btn primary" id="followGo">ابدأ</button>
+    <button class="btn" id="followCancel">إلغاء</button>
+  </div>
+</div>
+
 <!-- Bookmark sheet -->
 <div class="modal" id="bmModal" hidden>
   <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="bmTitle">
@@ -1288,7 +1306,19 @@ function stopFollow(keepNote) {
   $("followBtn").classList.remove("on");
   if (!keepNote) followStatus("");
 }
-$("followBtn").onclick = () => fol ? stopFollow() : startFollow();
+function closeFollowNotice() { $("followModal").hidden = true; }
+$("followBtn").onclick = () => {
+  if (fol) return stopFollow();
+  if (store.get("followNotice") === "off") return startFollow();
+  $("followNoRemind").checked = false;
+  $("followModal").hidden = false;
+};
+$("followGo").onclick = () => {
+  if ($("followNoRemind").checked) store.set("followNotice", "off");
+  closeFollowNotice(); startFollow();
+};
+$("followCancel").onclick = $("followCancelX").onclick = closeFollowNotice;
+$("followModal").addEventListener("click", e => { if (e.target.id === "followModal") closeFollowNotice(); });
 
 /* ---------- Voice search: say a few words and it finds the ayah anywhere in the Quran ---------- */
 // Ayahs are ranked by how many of the heard words they contain in order, allowing small slips.
