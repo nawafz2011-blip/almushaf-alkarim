@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.mushaff.twa",
+        "sha256_cert_fingerprints": ["B9:8D:39:4B:3F:E1:83:EE:D6:E6:78:0D:EB:9A:02:FF:9C:DF:6E:53:9A:7A:16:F0:E7:4A:6D:B2:68:C0:CC:DD"]
+      }
+    }]
