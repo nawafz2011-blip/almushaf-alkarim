@@ -226,7 +226,7 @@ body.zoom .spread { padding-block: calc(var(--zh, 75vh) * 0.35); align-items: fl
         <button class="btn" id="repeatBtn">⟳ إعدادات التكرار</button>
       </div>
       <div class="note" id="audioNote">اضغط على أي آية في الصفحة ثم شغّل.</div>
-      <div class="row"><button class="btn" id="followBtn" title="الموقع يسمعك ويتابع معك">🎙 تابعني وأنا أقرأ (تجريبي)</button></div>
+      <div class="row"><button class="btn" id="followBtn" title="الموقع يسمعك ويتابع معك"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-4px;margin-inline-end:6px"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>تابعني وأنا أقرأ (تجريبي)</button></div>
       <div class="note" id="followNote" hidden></div>
     </section>
     <section class="panel">
@@ -1018,7 +1018,7 @@ const OPENINGS = [
 // Removes the isti'adha wherever it is and a basmala at the start. A part still being said (at the end) is
 // skipped too, but a part followed by other words is kept: «اعوذ بالله ان اكون…» (البقرة ٦٧) is an ayah.
 function skipOpening(words, keepBasmala) {
-  const out = [], seen = { t: false, b: false };
+  const out = [], keep = [], seen = { t: false, b: false };
   for (let k = 0; k < words.length; ) {
     let skip = 0;
     for (const o of OPENINGS) {
@@ -1030,9 +1030,9 @@ function skipOpening(words, keepBasmala) {
       }
     }
     if (skip) { k += skip; continue; }
-    out.push(words[k]); k++;
+    out.push(words[k]); keep.push(k); k++;
   }
-  return { words: out, taawudh: seen.t, basmala: seen.b };
+  return { words: out, keep, taawudh: seen.t, basmala: seen.b };
 }
 const openingNote = o => (o.taawudh ? "أعوذ بالله من الشيطان الرجيم ✓ " : "") + (o.basmala ? "بسم الله الرحمن الرحيم ✓ " : "");
 
@@ -1089,9 +1089,11 @@ function followMatch(heard) {
 function followHeard(text) {
   if (!fol || !quranN) return;
   // at the opening of al-Fatiha the basmala is the first ayah, so it is followed there
-  const o = skipOpening(norm(text).split(" ").filter(Boolean), cur === 0);
+  // the words as heard (for showing) and letters-only (for matching), one for one
+  const raw = text.trim().split(/\s+/).filter(w => norm(w));
+  const o = skipOpening(raw.map(norm), cur === 0);
+  fol.op = o; fol.rest = o.keep.map(k => raw[k]);
   const heard = o.words;
-  fol.opening = heard.length ? "" : openingNote(o);   // only the isti'adha so far: say it was heard
   if (!heard.length) return;
   const m = followMatch(heard);
   let j = m.j;
@@ -1120,6 +1122,20 @@ function followHeard(text) {
     fol.words = followWords(i); fol.ptr = off + 1;
   }
 }
+// What the line under the controls says: ابدأ القراءة → the isti'adha / basmala when heard →
+// the first words read, for 3 seconds, so the reader sees it hears them → جاري الاستماع… from then on
+function followLine() {
+  if (!fol.rest || !fol.rest.length) {
+    if (fol.op && fol.op.basmala) return "بسم الله الرحمن الرحيم ✓";
+    if (fol.op && fol.op.taawudh) return "أعوذ بالله من الشيطان الرجيم ✓";
+    return "ابدأ القراءة";
+  }
+  if (!fol.wordsAt) {
+    fol.wordsAt = Date.now();
+    const f = fol; setTimeout(() => { if (fol === f) followStatus("🎙 جاري الاستماع…"); }, 3000);
+  }
+  return Date.now() - fol.wordsAt < 3000 ? fol.rest.slice(0, 6).join(" ") : "جاري الاستماع…";
+}
 async function startFollow() {
   if (!SR) { followStatus("ميزة «تابعني» غير مدعومة في هذا المتصفح. جرّبها في Chrome."); return; }
   try { await loadQuran(); } catch (e) { followStatus("تعذّر تحميل نص القرآن. تأكد من الاتصال."); return; }
@@ -1133,7 +1149,7 @@ async function startFollow() {
     let t = "";
     for (let r = Math.max(0, e.results.length - 3); r < e.results.length; r++) t += " " + e.results[r][0].transcript;
     followHeard(t);
-    if (fol) followStatus("🎙 " + (fol.opening || "أتابعك… " + t.trim().split(/\s+/).slice(-5).join(" ")));
+    if (fol) followStatus("🎙 " + followLine());
   };
   rec.onerror = e => {
     if (e.error === "not-allowed" || e.error === "service-not-allowed") { followStatus("لازم تسمح للموقع باستخدام المايك."); stopFollow(true); }
@@ -1141,7 +1157,7 @@ async function startFollow() {
   rec.onend = () => { if (fol && fol.rec === rec) { try { rec.start(); } catch (e) {} } };   // keep listening after pauses
   try { rec.start(); } catch (e) {}
   $("followBtn").classList.add("on");
-  followStatus("🎙 اقرأ من: سورة " + SURAHS[AY[from].s - 1][0] + " · الآية " + ar(AY[from].a));
+  followStatus("🎙 ابدأ القراءة");
 }
 function stopFollow(keepNote) {
   if (!fol) return;
