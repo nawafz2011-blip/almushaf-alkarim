@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- The site has its own light and dark look: this stops browsers (Samsung Internet's dark mode) from darkening or inverting the mushaf pages -->
+<meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#fbfbf8" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#19211f" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -43,6 +45,7 @@ if ("serviceWorker" in navigator) addEventListener("load", () => navigator.servi
 </script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Noto+Naskh+Arabic:wght@400;600&display=swap">
 <style>
+:root { color-scheme: light dark; }
 :root {
   --bg: #e9ede8;
   --surface: #fbfbf8;
