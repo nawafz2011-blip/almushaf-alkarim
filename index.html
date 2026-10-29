@@ -1226,7 +1226,7 @@ function followStatus(t) {
   const n = $("followNote"); n.hidden = !t; n.textContent = "";
   if (!t) return;
   const mic = t.startsWith("🎙");
-  if (mic) { t = t.replace(/^🎙\s*/, ""); n.insertAdjacentHTML("beforeend", '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-inline-end:5px"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>'); }
+  if (mic) { t = t.replace(/^🎙\s*/, ""); n.insertAdjacentHTML("beforeend", '<svg viewBox="0 0 16 24" width="11" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="vertical-align:-3px;margin-inline-end:5px"><rect x="3.5" y="1.5" width="9" height="13" rx="4.5"/><path d="M5.5 6h5M5.5 9h5M5.5 12h5M8 14.5v5"/><rect x="5" y="19.5" width="6" height="3" rx="1"/></svg>'); }
   n.append(t);
 }
 // Very common words (الله، الذين، من، في…) appear on every page, so on their own they must not move the highlight
