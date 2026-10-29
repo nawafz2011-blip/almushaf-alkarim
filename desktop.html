@@ -1115,12 +1115,19 @@ function followHeard(text) {
   const check = heard.length >= 4 && (j < 0 || m.score < 3) && now - (fol.jumped || 0) > 2500 && now - (fol.checked || 0) > 600;   // the whole-Quran search is heavier: not on every word
   if (check) fol.checked = now;
   const r = check ? voiceRank(heard.slice(-8)) : [], ga = r[0];
-  const sure = ga && (!r[1] || r[1].score < ga.score) && !fol.words.some(x => x.i === ga.i);
-  const far = sure && (j < 0 ? ga.score >= 4 : ga.score >= 6);
+  let far = false;
+  if (ga && (!r[1] || r[1].score < ga.score) && !fol.words.some(x => x.i === ga.i)) {
+    // an ayah on these pages that reads almost the same (لقمان ١٥ / العنكبوت ٨) keeps the reader here
+    const here = voiceRank(heard.slice(-8), [...new Set(fol.words.map(x => x.i))])[0];
+    const elsewhere = (j < 0 ? ga.score >= 5 : ga.score >= 6) && (!here || here.score < ga.score - 2);
+    // and it must hold on two checks in a row, so one misheard word does not move the reader
+    fol.away = elsewhere ? (fol.away || 0) + 1 : 0;
+    far = fol.away >= 2;
+  } else if (check) fol.away = 0;
   if (j < 0 && !far) return;
   if (far) {
     const a = ga;
-    fol.jumped = Date.now();
+    fol.jumped = Date.now(); fol.away = 0;
     fol.words = followWords(a.i);
     const last = heard[heard.length - 1], base = followAt(a.i);
     let k = -1;
@@ -1184,10 +1191,11 @@ $("followBtn").onclick = () => fol ? stopFollow() : startFollow();
 
 /* ---------- Voice search: say a few words and it finds the ayah anywhere in the Quran ---------- */
 // Ayahs are ranked by how many of the heard words they contain in order, allowing small slips.
-function voiceRank(heard) {
+function voiceRank(heard, only) {   // only: a list of ayahs to look in (default: the whole Quran)
   const h = heard.slice(0, 14), out = [], q = h.join(" ");
   if (!quranW) quranW = quranN.map(t => t.split(" "));
-  for (let i = 0; i < quranN.length; i++) {
+  for (let n = 0; n < (only ? only.length : quranN.length); n++) {
+    const i = only ? only[n] : n;
     if (quranN[i].includes(q)) { out.push({ i, score: h.length + 1 }); continue; }   // exact run of words
     // this ayah followed by the next one, so a reading that crosses into the next ayah still matches
     const W = i + 1 < quranW.length ? quranW[i].concat(quranW[i + 1]) : quranW[i], n0 = quranW[i].length;
