@@ -1374,7 +1374,7 @@ async function voiceSearch() {
   rec.lang = "ar-SA"; rec.continuous = true; rec.interimResults = true; rec.maxAlternatives = 1;
   vrec = rec; $("voiceBtn").classList.add("on");
   sIn.value = "";
-  showResults(`<div class="res-empty">🎙 اقرأ الآية… وأكمل القراءة لين تبقى آية وحدة</div>`);
+  showResults(`<div class="res-empty">🎙 اقرأ آية ونجدها لك</div>`);
   let done = false, text = "";
   rec.onresult = e => {
     if (done) return;
@@ -1397,13 +1397,13 @@ async function voiceSearch() {
   };
   rec.onerror = e => {
     if (e.error === "not-allowed" || e.error === "service-not-allowed") showResults(`<div class="res-empty">لازم تسمح للموقع باستخدام المايك.</div>`);
-    else if (e.error === "no-speech") showResults(`<div class="res-empty">ما سمعت شي. اضغط المايك وجرّب مرة ثانية.</div>`);
+    else if (e.error === "no-speech") showResults(`<div class="res-empty">🎙 تأكد إن المايك شغّال ومسموح للموقع</div>`);
   };
   rec.onend = () => {
     vrec = null; $("voiceBtn").classList.remove("on");
     if (done) return;
     const t = text || sIn.value;
-    if (!t.trim()) { showResults(`<div class="res-empty">ما سمعت شي. تأكد إن المايك شغّال ومسموح للموقع، وجرّب في Chrome.</div>`); return; }
+    if (!t.trim()) { showResults(`<div class="res-empty">🎙 تأكد إن المايك شغّال ومسموح للموقع</div>`); return; }
     // stopped before one ayah was left: if the exact words match nothing (a misheard word), fall back to close matches
     if (liveHits(norm(t)).length) runSearch(); else voiceShow(t);
   };
