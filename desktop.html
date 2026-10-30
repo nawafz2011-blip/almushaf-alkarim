@@ -2,6 +2,19 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
+<!-- Closed while being updated: visitors see maintenance.html; the owner opens the site once with ?key=… and this browser remembers it.
+     To open the site to everyone again, delete this script from index.html and desktop.html. -->
+<script>
+(function () {
+  var H = 1493042218, h = function (s) { var x = 5381; for (var i = 0; i < s.length; i++) x = ((x * 33) ^ s.charCodeAt(i)) >>> 0; return x; };
+  try {
+    var q = new URLSearchParams(location.search), k = q.get("key");
+    if (k && h(k) === H) { localStorage.setItem("siteKey", k); q.delete("key"); history.replaceState(null, "", location.pathname + (q.toString() ? "?" + q : "") + location.hash); }
+    var s = localStorage.getItem("siteKey");
+    if (!s || h(s) !== H) location.replace("/maintenance.html");
+  } catch (e) { location.replace("/maintenance.html"); }
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- The site has its own light and dark look: this stops browsers (Samsung Internet's dark mode) from darkening or inverting the mushaf pages -->
 <meta name="color-scheme" content="light dark">
