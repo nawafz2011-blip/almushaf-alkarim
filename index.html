@@ -753,11 +753,12 @@ const reciters = () => MZ().warsh ? RECITERS_WARSH : RECITERS;
 const rec = () => $("reciterSel").value;
 const pad = n => String(n).padStart(3, "0");
 const urlFor = (s, a) => AUDIO_BASE + rec() + "/" + pad(s) + pad(a) + ".mp3";
-const needsBasmala = o => o.a === 1 && o.s !== 1 && o.s !== 9 && !segRec();
+const needsBasmala = o => o.a === 1 && o.s !== 1 && o.s !== 9;
 // Reciters recorded a whole surah per file (not ayah by ayah): each ayah plays as a stretch of the
 // surah's file, from the ayah start times worked out from the recording (audio/<id>.json).
-// These are prayer recordings, so the basmala is silent and the file starts at the first ayah.
-const SURAH_FILES = { luhaidan: { base: "https://nawafz2011-blip.github.io/luhaidan/", times: null } };
+// These are prayer recordings: the basmala is silent there, so it plays from its own short file.
+// A surah's list may carry one more time than it has ayahs: where its last ayah ends (al-Fatiha: before «آمين»).
+const SURAH_FILES = { luhaidan: { base: "https://nawafz2011-blip.github.io/luhaidan/", basmala: "audio/luhaidan-basmala.mp3", times: null } };
 const segRec = () => SURAH_FILES[rec()];
 let segSrc = "", segStart = 0, segEnd = null, segPausedAt = 0;
 const loadSeg = id => fetch("audio/" + id + ".json").then(r => r.json()).then(t => { SURAH_FILES[id].times = t; });
@@ -791,6 +792,13 @@ function playAyah(i, fresh = true) {
   const o = AY[i], g = segRec();
   if (g) {
     if (!g.times) { loadSeg(rec()).then(() => { if (playing && playIdx === i) playAyah(i, fresh); }, () => stop()); setPlayBtn(); return; }
+    if ((o.s === 1 && o.a === 1) || (needsBasmala(o) && fresh)) {
+      inBasmala = o.s !== 1;            // in al-Fatiha the basmala is the ayah itself
+      segSrc = g.basmala; segStart = 0; segEnd = null; audio.src = g.basmala;
+      audio.play().catch(() => {});
+      setPlayBtn(); updateNote(); paint();
+      return;
+    }
     inBasmala = false;
     const T = g.times[o.s]; if (!T) { stop(); return; }
     segStart = T[o.a - 1]; segEnd = o.a < T.length ? T[o.a] : null;
@@ -873,7 +881,7 @@ audio.addEventListener("ended", onAyahEnd);
 audio.addEventListener("loadedmetadata", () => { if (segRec() && segSrc && Math.abs(audio.currentTime - segStart) > 0.6) audio.currentTime = segStart; });
 function onAyahEnd() {
   if (!playing) return;
-  if (inBasmala) { inBasmala = false; const o = AY[playIdx]; audio.src = urlFor(o.s, o.a); audio.play().catch(() => {}); return; }
+  if (inBasmala) { inBasmala = false; if (segRec()) return playAyah(playIdx, false); const o = AY[playIdx]; audio.src = urlFor(o.s, o.a); audio.play().catch(() => {}); return; }
   if (session) {
     const s = session;
     if (s.ayahLeft > 0) {
