@@ -776,6 +776,7 @@ const needsBasmala = o => o.a === 1 && o.s !== 1 && o.s !== 9;
 const SURAH_FILES = { luhaidan: { base: "https://nawafz2011-blip.github.io/luhaidan/", basmala: "audio/luhaidan-basmala.mp3", times: null } };
 const segRec = () => SURAH_FILES[rec()];
 let segSrc = "", segStart = 0, segEnd = null, segPausedAt = 0;
+const SEG_LEAD = 0.7;   // seconds the highlight moves ahead of the ayah's end when reading on
 const loadSeg = id => fetch("audio/" + id + ".json").then(r => r.json()).then(t => { SURAH_FILES[id].times = t; });
 const ayahLen = () => segRec() ? (segEnd ?? audio.duration ?? 0) - segStart : (audio.duration || 0);
 
@@ -820,7 +821,7 @@ function playAyah(i, fresh = true) {
     const src = g.base + pad(o.s) + ".mp3";
     // carrying straight on into the next ayah of the same file: no seek, so there is no gap
     if (segSrc !== src) { segSrc = src; audio.src = src + "#t=" + segStart; }
-    else if (Math.abs(audio.currentTime - segStart) > 0.6) audio.currentTime = segStart;
+    else if (audio.currentTime < segStart - SEG_LEAD - 0.3 || audio.currentTime > segStart + 0.6) audio.currentTime = segStart;
     audio.play().catch(() => {});
     setPlayBtn(); updateNote(); paint();
     return;
@@ -886,8 +887,11 @@ audio.addEventListener("timeupdate", () => {
 });
 // A whole-surah file: the ayah ends where the next one starts
 setInterval(() => {
-  if (!playing || !segRec() || segEnd == null || audio.currentTime < segEnd) return;
-  if (!session && $("autoNext").checked && playIdx + 1 < AY.length && AY[playIdx + 1].s === AY[playIdx].s) return playAyah(playIdx + 1);
+  if (!playing || !segRec() || segEnd == null || inBasmala) return;
+  // reading straight on: move the highlight a little before the pause, so it does not trail the reciter
+  const on = !session && $("autoNext").checked && playIdx + 1 < AY.length && AY[playIdx + 1].s === AY[playIdx].s;
+  if (on && audio.currentTime >= segEnd - SEG_LEAD) return playAyah(playIdx + 1);
+  if (audio.currentTime < segEnd) return;
   segPausedAt = Date.now(); audio.pause();
   onAyahEnd();
 }, 50);
