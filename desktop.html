@@ -665,7 +665,7 @@ const needsBasmala = o => o.a === 1 && o.s !== 1 && o.s !== 9;
 const SURAH_FILES = { luhaidan: { base: "https://nawafz2011-blip.github.io/luhaidan/", basmala: "audio/luhaidan-basmala.mp3", times: null } };
 const segRec = () => SURAH_FILES[rec()];
 let segSrc = "", segStart = 0, segEnd = null, segPausedAt = 0;
-const SEG_LEAD = 0.7;   // seconds the highlight moves ahead of the ayah's end when reading on
+const SEG_LEAD = 0.3;   // seconds the highlight moves ahead of the ayah's end when reading on
 const loadSeg = id => fetch("audio/" + id + ".json").then(r => r.json()).then(t => { SURAH_FILES[id].times = t; });
 const ayahLen = () => segRec() ? (segEnd ?? audio.duration ?? 0) - segStart : (audio.duration || 0);
 
