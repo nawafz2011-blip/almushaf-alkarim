@@ -2,8 +2,8 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
-<!-- Closed while being updated: visitors see maintenance.html; the owner opens the site once with ?key=… and this browser remembers it.
-     To open the site to everyone again, delete this script from index.html and desktop.html. -->
+<!-- Owner preview: things still being tried out (the reciter محمد اللحيدان) show only in the owner's browser.
+     The owner opens the site once with ?key=… and this browser remembers it (window.OWNER). -->
 <script>
 (function () {
   var H = 1493042218, h = function (s) { var x = 5381; for (var i = 0; i < s.length; i++) x = ((x * 33) ^ s.charCodeAt(i)) >>> 0; return x; };
@@ -11,8 +11,8 @@
     var q = new URLSearchParams(location.search), k = q.get("key");
     if (k && h(k) === H) { localStorage.setItem("siteKey", k); q.delete("key"); history.replaceState(null, "", location.pathname + (q.toString() ? "?" + q : "") + location.hash); }
     var s = localStorage.getItem("siteKey");
-    if (!s || h(s) !== H) location.replace("/maintenance.html");
-  } catch (e) { location.replace("/maintenance.html"); }
+    window.OWNER = !!s && h(s) === H;
+  } catch (e) { window.OWNER = false; }
 })();
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -354,6 +354,8 @@ const RECITERS = [
   ["Ali_Jaber_64kbps", "علي جابر"],
   ["luhaidan", "محمد اللحيدان"],
 ];
+// still being tried out: only in the owner's browser for now
+if (!window.OWNER) RECITERS.splice(RECITERS.findIndex(r => r[0] === "luhaidan"), 1);
 const AUDIO_BASE = "https:\/\/everyayah.com/data/";
 const ar = n => String(n).replace(/\d/g, d => "٠١٢٣٤٥٦٧٨٩"[d]);
 const $ = id => document.getElementById(id);
