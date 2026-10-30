@@ -752,7 +752,15 @@ const reciters = () => MZ().warsh ? RECITERS_WARSH : RECITERS;
 const rec = () => $("reciterSel").value;
 const pad = n => String(n).padStart(3, "0");
 const urlFor = (s, a) => AUDIO_BASE + rec() + "/" + pad(s) + pad(a) + ".mp3";
-const needsBasmala = o => o.a === 1 && o.s !== 1 && o.s !== 9;
+const needsBasmala = o => o.a === 1 && o.s !== 1 && o.s !== 9 && !segRec();
+// Reciters recorded a whole surah per file (not ayah by ayah): each ayah plays as a stretch of the
+// surah's file, from the ayah start times worked out from the recording (audio/<id>.json).
+// These are prayer recordings, so the basmala is silent and the file starts at the first ayah.
+const SURAH_FILES = { luhaidan: { base: "https://nawafz2011-blip.github.io/luhaidan/", times: null } };
+const segRec = () => SURAH_FILES[rec()];
+let segSrc = "", segStart = 0, segEnd = null, segPausedAt = 0;
+const loadSeg = id => fetch("audio/" + id + ".json").then(r => r.json()).then(t => { SURAH_FILES[id].times = t; });
+const ayahLen = () => segRec() ? (segEnd ?? audio.duration ?? 0) - segStart : (audio.duration || 0);
 
 const refText = i => SURAHS[AY[i].s - 1][0] + " " + ar(AY[i].a);
 const times = n => n === Infinity ? "بلا توقف" : ar(n);
@@ -779,7 +787,21 @@ function playAyah(i, fresh = true) {
   playIdx = i; playing = true;
   if (fresh && session) session.ayahLeft = session.ayahTimes - 1;
   select(i);
-  const o = AY[i];
+  const o = AY[i], g = segRec();
+  if (g) {
+    if (!g.times) { loadSeg(rec()).then(() => { if (playing && playIdx === i) playAyah(i, fresh); }, () => stop()); setPlayBtn(); return; }
+    inBasmala = false;
+    const T = g.times[o.s]; if (!T) { stop(); return; }
+    segStart = T[o.a - 1]; segEnd = o.a < T.length ? T[o.a] : null;
+    const src = g.base + pad(o.s) + ".mp3";
+    // carrying straight on into the next ayah of the same file: no seek, so there is no gap
+    if (segSrc !== src) { segSrc = src; audio.src = src + "#t=" + segStart; }
+    else if (Math.abs(audio.currentTime - segStart) > 0.6) audio.currentTime = segStart;
+    audio.play().catch(() => {});
+    setPlayBtn(); updateNote(); paint();
+    return;
+  }
+  segSrc = ""; segEnd = null;
   inBasmala = needsBasmala(o) && fresh;
   audio.src = inBasmala ? urlFor(1, 1) : urlFor(o.s, o.a);
   audio.play().catch(() => {});
@@ -823,7 +845,7 @@ function resume() {
 
 // Waits between recitations as set in the dialog: fixed seconds, or a multiple of the ayah's length
 function afterWait(fn) {
-  const w = session.wait, ms = w >= 0 ? w * 1000 : -w * (audio.duration || 0) * 1000;
+  const w = session.wait, ms = w >= 0 ? w * 1000 : -w * ayahLen() * 1000;
   if (ms <= 0) return fn();
   updateNote(true);
   pendingWait = fn;
@@ -832,19 +854,30 @@ function afterWait(fn) {
 
 // Paused from outside the page (headphones taken out, a phone call): treat it like the pause button
 audio.addEventListener("pause", () => {
-  if (playing && !audio.ended && audio.readyState >= 3 && audio.currentTime > 0) pause();
+  if (playing && !audio.ended && audio.readyState >= 3 && audio.currentTime > 0 && Date.now() - segPausedAt > 800) pause();
 });
 audio.addEventListener("timeupdate", () => {
-  if (audio.duration) $("prog").style.width = (audio.currentTime / audio.duration * 100) + "%";
+  const d = ayahLen(), t = audio.currentTime - (segRec() ? segStart : 0);
+  if (d > 0) $("prog").style.width = Math.min(100, Math.max(0, t / d * 100)) + "%";
 });
-audio.addEventListener("ended", () => {
+// A whole-surah file: the ayah ends where the next one starts
+setInterval(() => {
+  if (!playing || !segRec() || segEnd == null || audio.currentTime < segEnd) return;
+  if (!session && $("autoNext").checked && playIdx + 1 < AY.length && AY[playIdx + 1].s === AY[playIdx].s) return playAyah(playIdx + 1);
+  segPausedAt = Date.now(); audio.pause();
+  onAyahEnd();
+}, 50);
+audio.addEventListener("ended", onAyahEnd);
+// if the browser did not start the new file at the ayah (#t), move there once it can seek
+audio.addEventListener("loadedmetadata", () => { if (segRec() && segSrc && Math.abs(audio.currentTime - segStart) > 0.6) audio.currentTime = segStart; });
+function onAyahEnd() {
   if (!playing) return;
   if (inBasmala) { inBasmala = false; const o = AY[playIdx]; audio.src = urlFor(o.s, o.a); audio.play().catch(() => {}); return; }
   if (session) {
     const s = session;
     if (s.ayahLeft > 0) {
       s.ayahLeft--;
-      return afterWait(() => { audio.currentTime = 0; audio.play().catch(() => {}); updateNote(); });
+      return afterWait(() => { audio.currentTime = segRec() ? segStart : 0; audio.play().catch(() => {}); updateNote(); });
     }
     if (playIdx < s.to) return afterWait(() => playAyah(playIdx + 1));
     if (s.passLeft > 0) { s.passLeft--; return afterWait(() => playAyah(s.from)); }
@@ -852,7 +885,7 @@ audio.addEventListener("ended", () => {
   }
   if ($("autoNext").checked && playIdx + 1 < AY.length) playAyah(playIdx + 1);
   else stop();
-});
+}
 
 /* ---------- Repeat dialog ---------- */
 function fillAyahs(sel, s, a) {
