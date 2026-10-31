@@ -108,8 +108,8 @@ input[type=number] { width: 74px; }
 .page img { position: absolute; display: block; max-width: none; height: auto; user-select: none; -webkit-user-drag: none; }
 /* zoom mode: one large page in a box that scrolls to follow the ayah */
 body.zoom .spread { height: var(--zh, 75vh); width: var(--zw, 900px); overflow: auto; justify-content: flex-start; border-radius: 6px; }
-/* room above and below the page so an ayah at the very top or bottom can still come to the middle */
-body.zoom .spread { padding-block: calc(var(--zh, 75vh) * 0.35); align-items: flex-start; }
+/* no empty room above or below the page: an ayah near the top or bottom stays at that edge */
+body.zoom .spread { align-items: flex-start; }
 .btn.on, .btn.on:hover { background: var(--accent); border-color: var(--accent); color: var(--surface); }
 .hl { position: absolute; border-radius: 3px; cursor: pointer; }
 .hl.hover { background: var(--hover); }
