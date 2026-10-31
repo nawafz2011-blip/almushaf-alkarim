@@ -39,9 +39,9 @@ jobs:
           VERSION_NAME: "1.0.${{ github.run_number }}"
         # on failure, the last lines of the log become annotations, readable from the API
         run: |
-          ./gradlew --no-daemon bundleRelease > gradle.log 2>&1 || {
-            grep -E "What went wrong|error:|Error|FAILURE|> " gradle.log | head -40 | while IFS= read -r l; do echo "::error::$l"; done
-            tail -30 gradle.log | while IFS= read -r l; do echo "::error::$l"; done
+          ./gradlew --no-daemon --stacktrace bundleRelease > gradle.log 2>&1 || {
+            msg=$({ grep -A12 "What went wrong" gradle.log; grep -m8 "Caused by" gradle.log; grep -m5 -B2 -A3 "Where:" gradle.log; } | head -60 | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')
+            echo "::error title=gradle::$msg"
             exit 1; }
 
       - name: Test APK (installs directly, signed with a throwaway test key)
