@@ -1,0 +1,8 @@
+{
+  "appId": "com.mushaff.app",
+  "appName": "المصحف الكريم",
+  "webDir": "www",
+  "backgroundColor": "#1f5e5b",
+  "android": { "backgroundColor": "#1f5e5b" },
+  "plugins": { "SystemBars": { "insetsHandling": "css", "initialViewportFitValueHint": "cover" } }
+}

@@ -1,0 +1,10 @@
+// The mushaf page images ship as an install-time asset pack: they install with the app
+// (so every mushaf works offline) without counting toward the 200 MB base-module limit.
+apply plugin: 'com.android.asset-pack'
+
+assetPack {
+    packName = "mushafpages"
+    dynamicDelivery {
+        deliveryType = "install-time"
+    }
+}
