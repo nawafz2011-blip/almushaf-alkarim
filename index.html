@@ -351,6 +351,7 @@ input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--accent); }
       <label class="field">الصفحة <input id="pageInput" type="number" inputmode="numeric" min="1" max="604"></label>
     </div>
     <label class="field inline"><input type="checkbox" id="autoNext" checked> متابعة التلاوة للآية التالية</label>
+    <button type="button" class="btn" id="dlOpen">⬇ الاستماع دون اتصال بالإنترنت</button>
     <section id="tajweedKey" hidden>
       <div class="label" style="margin-bottom:6px">ألوان التجويد</div>
       <div class="legend">
@@ -753,6 +754,24 @@ function select(i) {
 
 /* ---------- Audio ---------- */
 const audio = $("audio"), pre = $("preload");
+
+// Recitations downloaded for listening without internet (offline.js) are played from the cache as blob URLs
+const OFF = { have: new Set(), blobs: new Map() };
+function offSrc(url) {
+  if (OFF.blobs.has(url)) return Promise.resolve(OFF.blobs.get(url));
+  return caches.open("recitations-v1").then(c => c.match(url)).then(r => r ? r.blob() : null).then(b => {
+    if (!b) { OFF.have.delete(url); return url; }
+    const u = URL.createObjectURL(b); OFF.blobs.set(url, u);
+    if (OFF.blobs.size > 40) { const [k, v] = OFF.blobs.entries().next().value; URL.revokeObjectURL(v); OFF.blobs.delete(k); }
+    return u;
+  }).catch(() => url);
+}
+let playTok = 0;
+function playSrc(url) {
+  const t = ++playTok;
+  if (!OFF.have.has(url)) { audio.src = url; audio.play().catch(() => {}); return; }
+  offSrc(url).then(u => { if (t !== playTok) return; audio.src = u; audio.play().catch(() => {}); });
+}
 let inBasmala = false, waitTimer = 0, pendingWait = null;   // pendingWait: step still due when paused during a wait
 const ICON_PLAY = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>';
 const ICON_PAUSE = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6.5" y="5" width="3.6" height="14" rx="1"/><rect x="13.9" y="5" width="3.6" height="14" rx="1"/></svg>';
@@ -828,9 +847,8 @@ function playAyah(i, fresh = true) {
   }
   segSrc = ""; segEnd = null;
   inBasmala = needsBasmala(o) && fresh;
-  audio.src = inBasmala ? urlFor(1, 1) : urlFor(o.s, o.a);
-  audio.play().catch(() => {});
-  if (i + 1 < AY.length) { const n = AY[i + 1]; pre.src = urlFor(n.s, n.a); }
+  playSrc(inBasmala ? urlFor(1, 1) : urlFor(o.s, o.a));
+  if (i + 1 < AY.length) { const n = AY[i + 1], nu = urlFor(n.s, n.a); if (OFF.have.has(nu)) offSrc(nu); else pre.src = nu; }
   setPlayBtn();
   updateNote();
   paint();
@@ -900,7 +918,7 @@ audio.addEventListener("ended", onAyahEnd);
 audio.addEventListener("loadedmetadata", () => { if (segRec() && segSrc && Math.abs(audio.currentTime - segStart) > 0.6) audio.currentTime = segStart; });
 function onAyahEnd() {
   if (!playing) return;
-  if (inBasmala) { inBasmala = false; if (segRec()) return playAyah(playIdx, false); const o = AY[playIdx]; audio.src = urlFor(o.s, o.a); audio.play().catch(() => {}); return; }
+  if (inBasmala) { inBasmala = false; if (segRec()) return playAyah(playIdx, false); const o = AY[playIdx]; playSrc(urlFor(o.s, o.a)); return; }
   if (session) {
     const s = session;
     if (s.ayahLeft > 0) {
@@ -1523,5 +1541,6 @@ if (start < 0) start = idxOf(1, 1);
 render(X().pageOf[start]);
 select(start);
 </script>
+<script src="offline.js"></script>
 </body>
 </html>
