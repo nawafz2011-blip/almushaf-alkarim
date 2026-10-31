@@ -137,6 +137,12 @@ body.zoom .spread { align-items: flex-start; }
 .tf.cur { background: var(--accent-soft); border-color: var(--accent); }
 .tn { color: var(--accent); font-family: var(--font-ui); font-size: 15px; margin-inline-end: 6px; white-space: nowrap; }
 .tf-surah { text-align: center; color: var(--accent); font-weight: 600; font-family: var(--font-ui); padding-block: 2px; }
+.tsel { font: inherit; font-size: 16px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; max-width: 100%; }
+.tf p { margin: 0; }
+.tf p + p { margin-top: .5em; }
+.tf > p:first-of-type { display: inline; }
+.tf b { font-weight: 600; }
+.tf-none { color: var(--muted); }
 .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .note { font-size: 13px; color: var(--muted); }
 .progress { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; }
@@ -266,7 +272,7 @@ body.zoom .spread { align-items: flex-start; }
       </div>
     </section>
     <section class="panel">
-      <div class="label">التفسير الميسّر</div>
+      <div class="label"><select id="tafsirSel" class="tsel" aria-label="اختر التفسير"></select></div>
       <div class="ref" id="ref">—</div>
       <div class="tafsir" id="tafsir"></div>
     </section>
@@ -576,7 +582,28 @@ function hafsPageTafsir(hp) {
   }
   return tafsirByHafsPage[hp];
 }
+// the tafsir the reader picked; the extra ones are one JSON file per surah under tafsir/<id>/
+const TAFSIRS = [["muyassar", "التفسير الميسّر"], ["sa3dy", "تفسير السعدي"], ["katheer", "تفسير ابن كثير"], ["tabary", "تفسير الطبري"],
+  ["qortoby", "تفسير القرطبي"], ["baghawy", "تفسير البغوي"], ["waseet", "التفسير الوسيط"], ["tanweer", "التحرير والتنوير"],
+  ["e3rab", "إعراب القرآن"], ["tafheem", "تفهيم القرآن (إنجليزي)"], ["russian", "تفسير بالروسية"], ["indonesian", "تفسير بالإندونيسية"]];
+const LTR_TAFSIR = ["tafheem", "russian", "indonesian"];
+let tafsirId = TAFSIRS.some(t => t[0] === store.get("tafsirId")) ? store.get("tafsirId") : "muyassar";
+const tafsirFiles = {};
+function surahTafsir(id, s) {
+  const k = id + "/" + String(s).padStart(3, "0");
+  if (!tafsirFiles[k]) tafsirFiles[k] = fetch("tafsir/" + k + ".json").then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .catch(e => { delete tafsirFiles[k]; throw e; });
+  return tafsirFiles[k];
+}
+const NO_TAFSIR = '<span class="tf-none">تفسير هذه الآية مذكور مع الآيات المجاورة.</span>';
 function tafsirFor(indices) {
+  if (tafsirId !== "muyassar") {
+    const ss = [...new Set(indices.map(i => AY[i].s))];
+    return Promise.all(ss.map(s => surahTafsir(tafsirId, s))).then(lists => {
+      const by = {}; ss.forEach((s, k) => { by[s] = lists[k]; });
+      return indices.map(i => by[AY[i].s][AY[i].a - 1] || NO_TAFSIR);
+    });
+  }
   if (window.TAFSIR) return Promise.resolve(indices.map(i => TAFSIR[i]));
   const hp = [...new Set(indices.map(i => IDX.hafs.pageOf[i]))];
   return Promise.all(hp.map(hafsPageTafsir)).then(lists => {
@@ -593,6 +620,7 @@ function renderTafsir() {
     const f = X().first[p - 1], n = MUSHAF_PAGES[coordsOf(mushaf)][p - 1].length;
     for (let k = 0; k < n; k++) indices.push(f + k);
   });
+  box.dir = LTR_TAFSIR.includes(tafsirId) ? "ltr" : "rtl";
   box.innerHTML = '<div class="note">جارٍ تحميل التفسير…</div>';
   tafsirFor(indices).then(texts => {
     if (token !== tafsirToken) return;
@@ -617,6 +645,13 @@ $("tafsir").addEventListener("click", e => {
   const i = +d.dataset.i;
   playing ? playAyah(i) : select(i);
 });
+(() => {
+  const sel = $("tafsirSel");
+  sel.innerHTML = TAFSIRS.map(t => `<option value="${t[0]}">${t[1]}</option>`).join("");
+  sel.value = tafsirId;
+  sel.onchange = () => { tafsirId = sel.value; store.set("tafsirId", tafsirId); renderTafsir(); };
+})();
+
 
 function paint() {
   const bm = bmIdx();
