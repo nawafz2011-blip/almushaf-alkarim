@@ -894,7 +894,9 @@ function setZoom(on) {
   document.body.classList.toggle("zoom", on);
   $("zoomBtn").classList.toggle("on", on);
   $("zoomBtn").setAttribute("aria-pressed", on);
-  render(page);
+  // one page alone: show the page of the ayah being read (or selected), not just the first page of the spread
+  const i = playing && playIdx >= 0 ? playIdx : cur;
+  render(i >= 0 ? X().pageOf[i] : page);
   requestAnimationFrame(() => follow(false));
 }
 $("zoomBtn").onclick = () => setZoom(!zoomOn);
