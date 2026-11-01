@@ -2,7 +2,7 @@
 """Prepare the app's web files from the site (one folder up):
 - www/: the site's pages, scripts and data, with the fonts saved inside the app so it looks right offline
 - android/mushafpages/: the mushaf page images (install-time asset pack); the large JPG
-  mushafs are re-encoded as WebP, which looks the same and is about a third of the size."""
+  mushafs and the tajweed mushaf are re-encoded as WebP, which looks the same and is much smaller."""
 import os, re, shutil, urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from PIL import Image
@@ -39,9 +39,10 @@ for f in ["index.html", "desktop.html"]:
     h = open(p, encoding="utf-8").read()
     h = font_link.sub('<link rel="stylesheet" href="fonts/fonts.css">', h)
     h = h.replace('name, ext: "jpg", coords: "hafs"', 'name, ext: "webp", coords: "hafs"')   # re-encoded below
+    h = h.replace('tajweed:   { name: "مصحف التجويد الملوّن", ext: "png"', 'tajweed:   { name: "مصحف التجويد الملوّن", ext: "webp"')
     h = re.sub(r'if \("serviceWorker" in navigator\)[^\n]*\n', "", h)                       # the app has its files already
     h = h.replace("<head>", '<head>\n<script src="native-speech.js"></script>', 1)            # speech recognition, before the page's scripts
-    assert "fonts.googleapis" not in h and 'ext: "webp"' in h, f
+    assert "fonts.googleapis" not in h and 'name, ext: "webp"' in h and 'الملوّن", ext: "webp"' in h, f
     open(p, "w", encoding="utf-8").write(h)
 
 # Mushaf pages
@@ -58,7 +59,9 @@ for m in sorted(os.listdir(os.path.join(SITE, "pages"))):
 def one(job):
     src, dst = job
     if src.endswith(".jpg"):
-        Image.open(src).save(dst[:-4] + ".webp", "WEBP", quality=80, method=4)
+        Image.open(src).save(dst[:-4] + ".webp", "WEBP", quality=70, method=6)
+    elif "/tajweed/" in src:
+        Image.open(src).convert("RGB").save(dst[:-4] + ".webp", "WEBP", quality=85, method=6)
     else:
         shutil.copy(src, dst)
 

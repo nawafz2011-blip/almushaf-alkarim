@@ -463,7 +463,6 @@ const RECITERS = [
   ["luhaidan", "محمد اللحيدان"],
 ];
 // still being tried out: only in the owner's browser for now
-if (!window.OWNER) RECITERS.splice(RECITERS.findIndex(r => r[0] === "luhaidan"), 1);
 const AUDIO_BASE = "https:\/\/everyayah.com/data/";
 const ar = n => String(n).replace(/\d/g, d => "٠١٢٣٤٥٦٧٨٩"[d]);
 const $ = id => document.getElementById(id);
