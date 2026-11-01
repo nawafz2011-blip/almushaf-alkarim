@@ -44,11 +44,10 @@ jobs:
             echo "::error title=gradle::$msg"
             exit 1; }
 
-      - name: Test APK (installs directly, signed with a throwaway test key)
+      - name: Test APK (installs directly, signed with the test key)
         run: |
           curl -sSLo bundletool.jar https://github.com/google/bundletool/releases/download/1.18.1/bundletool-all-1.18.1.jar
-          keytool -genkeypair -keystore test.keystore -storepass android -keypass android -alias test \
-            -dname "CN=test" -keyalg RSA -keysize 2048 -validity 10000 >/dev/null
+          cp app/test.keystore test.keystore   # a fixed test key (not the Google Play key), so each test APK installs over the last
           java -jar bundletool.jar build-apks --mode=universal \
             --bundle=app/android/app/build/outputs/bundle/release/app-release.aab --output=app.apks \
             --ks=test.keystore --ks-pass=pass:android --ks-key-alias=test --key-pass=pass:android
