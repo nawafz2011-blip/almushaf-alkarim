@@ -246,20 +246,38 @@
   addEventListener("online", () => { const b = document.getElementById("dlAsk"); if (b) b.remove(); });
   setTimeout(offerSaved, 800);
 
-  // In the app: keep the recitation going when the app is in the background (a notification shows it)
+  // In the app: the recitation shows as a media player in the notifications and on the lock screen,
+  // with previous / pause-play / next, and it keeps playing when the user leaves the app
   const RP = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Recitation;
   if (RP) {
-    let offTimer = 0;
-    const label = () => {
-      const o = AY[playIdx]; if (!o) return "";
-      const r = (typeof reciters === "function" ? reciters() : []).find(x => x[0] === rec());
-      return `سورة ${surahName(o.s)} · الآية ${AR(o.a)}` + (r ? ` · الشيخ ${r[1]}` : "");
+    let t = 0, lastState = "";
+    const push = () => {
+      clearTimeout(t);
+      t = setTimeout(() => {
+        const state = playing ? "playing" : paused ? "paused" : "none";
+        if (state === "none" && lastState === "none") return;
+        lastState = state;
+        const o = AY[playIdx >= 0 ? playIdx : cur];
+        const r = (typeof reciters === "function" ? reciters() : []).find(x => x[0] === rec());
+        RP.update({
+          state,
+          title: o ? `سورة ${surahName(o.s)} · الآية ${AR(o.a)}` : "",
+          artist: r ? r[1] : "",
+          position: isFinite(audio.currentTime) ? audio.currentTime : 0,
+          duration: isFinite(audio.duration) ? audio.duration : 0,
+        }).catch(() => {});
+      }, 250);   // after the page has updated its own state; also skips the short gap between two ayahs
     };
-    audio.addEventListener("play", () => { clearTimeout(offTimer); RP.update({ playing: true, title: label() }).catch(() => {}); });
-    const maybeOff = () => { clearTimeout(offTimer); offTimer = setTimeout(() => { if (!playing) RP.update({ playing: false }).catch(() => {}); }, 2500); };
-    audio.addEventListener("pause", maybeOff);
-    audio.addEventListener("ended", maybeOff);
-    RP.addListener("pause", () => { if (playing) pause(); });
+    ["play", "playing", "pause", "ended", "loadedmetadata", "seeked"].forEach(ev => audio.addEventListener(ev, push));
+    const origStop = window.stop;
+    window.stop = function () { const r = origStop.apply(this, arguments); push(); return r; };
+    RP.addListener("control", e => {
+      if (e.action === "pause") { if (playing) pause(); }
+      else if (e.action === "play") { if (paused) resume(); else if (!playing) document.getElementById("playBtn").click(); }
+      else if (e.action === "next") document.getElementById("nextAyah").click();
+      else if (e.action === "prev") document.getElementById("prevAyah").click();
+    });
   }
+
   document.querySelectorAll("#dlOpen").forEach(b => { b.onclick = open; });
 })();
