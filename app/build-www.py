@@ -15,7 +15,7 @@ UA = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chr
 
 shutil.rmtree(WWW, ignore_errors=True)
 os.makedirs(WWW)
-for f in ["index.html", "desktop.html", "data.js", "quran.js", "offline.js", "share.js", "favicon.ico"]:
+for f in ["index.html", "desktop.html", "data.js", "quran.js", "offline.js", "favicon.ico"]:
     shutil.copy(os.path.join(SITE, f), WWW)
 shutil.copy(os.path.join(HERE, "native-speech.js"), WWW)
 for d in ["icons", "audio"]:
