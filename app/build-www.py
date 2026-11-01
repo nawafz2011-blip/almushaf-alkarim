@@ -17,6 +17,7 @@ shutil.rmtree(WWW, ignore_errors=True)
 os.makedirs(WWW)
 for f in ["index.html", "desktop.html", "data.js", "quran.js", "offline.js", "favicon.ico"]:
     shutil.copy(os.path.join(SITE, f), WWW)
+shutil.copy(os.path.join(HERE, "native-speech.js"), WWW)
 for d in ["icons", "audio"]:
     shutil.copytree(os.path.join(SITE, d), os.path.join(WWW, d))
 
@@ -39,6 +40,7 @@ for f in ["index.html", "desktop.html"]:
     h = font_link.sub('<link rel="stylesheet" href="fonts/fonts.css">', h)
     h = h.replace('name, ext: "jpg", coords: "hafs"', 'name, ext: "webp", coords: "hafs"')   # re-encoded below
     h = re.sub(r'if \("serviceWorker" in navigator\)[^\n]*\n', "", h)                       # the app has its files already
+    h = h.replace("<head>", '<head>\n<script src="native-speech.js"></script>', 1)            # speech recognition, before the page's scripts
     assert "fonts.googleapis" not in h and 'ext: "webp"' in h, f
     open(p, "w", encoding="utf-8").write(h)
 
