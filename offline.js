@@ -7,7 +7,8 @@
   const P3 = n => String(n).padStart(3, "0");
   const allReciters = () => RECITERS.concat(RECITERS_WARSH).filter(r => !SURAH_FILES[r[0]]);
   const nameOf = id => (allReciters().find(r => r[0] === id) || [id, id])[1];
-  const surahName = s => SURAHS[s - 1][0];
+  // the UI font has no Uthmani marks: the small high sukun becomes a normal sukun, the rest are dropped
+  const surahName = s => SURAHS[s - 1][0].replace(/\u06E1/g, "\u0652").replace(/[\u06D6-\u06ED]/g, "");
   const urlOf = (id, s, a) => AUDIO_BASE + id + "/" + P3(s) + P3(a) + ".mp3";
   const load = () => { try { return JSON.parse(localStorage.getItem(LIST) || "[]"); } catch (e) { return []; } };
   const save = l => { try { localStorage.setItem(LIST, JSON.stringify(l)); } catch (e) {} };
@@ -30,6 +31,7 @@
 .dl-pt { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--muted); margin-top: 5px; font-variant-numeric: tabular-nums; }
 .dl-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); }
 .dl-item b { display: block; font-size: 15px; font-weight: 600; } .dl-item span { font-size: 12.5px; color: var(--muted); }
+.dl-play { flex: 1; min-width: 0; cursor: pointer; }
 .dl-empty { font-size: 13.5px; color: var(--muted); padding: 6px 0; }
 .dl-toast { position: fixed; left: 16px; right: 16px; bottom: calc(110px + env(safe-area-inset-bottom, 0px)); margin: 0 auto; max-width: 520px; background: #1d2320; color: #fff; border-radius: 12px; padding: 12px 16px; font-size: 14.5px; line-height: 1.7; z-index: 200; box-shadow: 0 6px 20px rgba(0,0,0,.3); }
 </style>`);
@@ -69,7 +71,7 @@
   let kind = "surah", busy = null, toastTimer = 0;
 
   $d("dlRec").innerHTML = allReciters().map(r => `<option value="${r[0]}">${r[1]}</option>`).join("");
-  $d("dlSurah").innerHTML = SURAHS.map((s, i) => `<option value="${i + 1}">${AR(i + 1)}. ${s[0]}</option>`).join("");
+  $d("dlSurah").innerHTML = SURAHS.map((s, i) => `<option value="${i + 1}">${AR(i + 1)}. ${surahName(i + 1)}</option>`).join("");
 
   function range() {
     const id = $d("dlRec").value, s = +$d("dlSurah").value, n = SURAHS[s - 1][1];
@@ -110,7 +112,7 @@
 
   function renderList() {
     const l = load();
-    $d("dlList").innerHTML = l.length ? l.map((e, k) => `<div class="dl-item"><div><b>${title(e)}</b><span>الشيخ ${nameOf(e.id)}${e.bytes ? " · " + mb(e.bytes) : ""}</span></div>
+    $d("dlList").innerHTML = l.length ? l.map((e, k) => `<div class="dl-item"><div class="dl-play" data-play="${k}" role="button" tabindex="0"><b>▶ ${title(e)}</b><span>الشيخ ${nameOf(e.id)}${e.bytes ? " · " + mb(e.bytes) : ""}</span></div>
       <button type="button" class="btn" data-del="${k}">حذف</button></div>`).join("")
       : '<div class="dl-empty">لم تُنزّل شيئًا بعد.</div>';
   }
@@ -191,6 +193,7 @@
     if (e.target === modal || e.target.closest("[data-close]")) modal.hidden = true;
     const t = e.target.closest(".dl-tabs button"); if (t) { kind = t.dataset.k; refresh(); }
     const del = e.target.closest("[data-del]"); if (del) remove(+del.dataset.del);
+    const pl = e.target.closest("[data-play]"); if (pl) playSaved(load()[+pl.dataset.play]);
   });
   modal.addEventListener("keydown", e => { if (e.key === "Escape") modal.hidden = true; e.stopPropagation(); });
   $d("dlRec").onchange = refresh;
@@ -198,5 +201,65 @@
   $d("dlFrom").oninput = $d("dlTo").oninput = refresh;
   $d("dlGo").onclick = download;
   $d("dlStop").onclick = () => { if (busy) busy.stop = true; };
+
+  // A saved item plays straight away: its reciter, from its first ayah, and it stops after its last one
+  let stopRange = null;
+  const origPlayAyah = window.playAyah;
+  window.playAyah = function (i, fresh) {
+    if (stopRange) {
+      if (i === stopRange[1] + 1) { stopRange = null; return stop(); }
+      if (i < stopRange[0] || i > stopRange[1]) stopRange = null;
+    }
+    return origPlayAyah.apply(this, arguments);
+  };
+  function playSaved(e) {
+    if (!e) return;
+    modal.hidden = true;
+    const sel = document.getElementById("reciterSel");
+    if (sel && [...sel.options].some(o => o.value === e.id) && sel.value !== e.id) { sel.value = e.id; sel.dispatchEvent(new Event("change")); }
+    const a = AY.findIndex(o => o.s === (e.s || 1) && o.a === (e.s ? e.from : 1));
+    const b = e.s ? AY.findIndex(o => o.s === e.s && o.a === e.to) : AY.length - 1;
+    if (a < 0) return;
+    if (playing) stop();
+    stopRange = [a, b];
+    playAyah(a);
+  }
+
+  // No internet: offer the saved recitations
+  let asked = false;
+  function offerSaved() {
+    if (asked || navigator.onLine || !load().length || document.getElementById("dlAsk")) return;
+    asked = true;
+    $d("dlToast").hidden = true;
+    const box = document.createElement("div");
+    box.className = "modal"; box.id = "dlAsk";
+    box.innerHTML = `<div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dlAskT" style="max-width:420px">
+      <div style="font-size:17px;font-weight:600;line-height:1.8" id="dlAskT">لا يوجد اتصال بالإنترنت. هل تريد الانتقال إلى التلاوات المحفوظة؟</div>
+      <div style="display:flex;gap:10px;margin-top:6px"><button type="button" class="btn dl-go" data-yes>نعم</button><button type="button" class="btn" data-no style="flex:1;justify-content:center">لا</button></div></div>`;
+    document.body.appendChild(box);
+    box.addEventListener("click", ev => {
+      if (ev.target.closest("[data-yes]")) { box.remove(); open(); }
+      else if (ev.target.closest("[data-no]") || ev.target === box) box.remove();
+    });
+  }
+  addEventListener("offline", () => { asked = false; offerSaved(); });
+  addEventListener("online", () => { const b = document.getElementById("dlAsk"); if (b) b.remove(); });
+  setTimeout(offerSaved, 800);
+
+  // In the app: keep the recitation going when the app is in the background (a notification shows it)
+  const RP = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Recitation;
+  if (RP) {
+    let offTimer = 0;
+    const label = () => {
+      const o = AY[playIdx]; if (!o) return "";
+      const r = (typeof reciters === "function" ? reciters() : []).find(x => x[0] === rec());
+      return `سورة ${surahName(o.s)} · الآية ${AR(o.a)}` + (r ? ` · الشيخ ${r[1]}` : "");
+    };
+    audio.addEventListener("play", () => { clearTimeout(offTimer); RP.update({ playing: true, title: label() }).catch(() => {}); });
+    const maybeOff = () => { clearTimeout(offTimer); offTimer = setTimeout(() => { if (!playing) RP.update({ playing: false }).catch(() => {}); }, 2500); };
+    audio.addEventListener("pause", maybeOff);
+    audio.addEventListener("ended", maybeOff);
+    RP.addListener("pause", () => { if (playing) pause(); });
+  }
   document.querySelectorAll("#dlOpen").forEach(b => { b.onclick = open; });
 })();
