@@ -1,0 +1,20 @@
+# Joins the signed Google Play bundle (stored in parts: GitHub refuses single files over 100 MB)
+# and publishes it as one file on the "app-test" release page.
+name: Publish Google Play bundle
+on:
+  push:
+    branches: [play-release]
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Join and check
+        run: |
+          cat parts/mushaf-play.aab.part* > mushaf-play.aab
+          echo "$(cat parts/sha256.txt)  mushaf-play.aab" | sha256sum -c -
+      - name: Publish
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: gh release upload app-test mushaf-play.aab --clobber --repo "${{ github.repository }}"
