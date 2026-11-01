@@ -56,6 +56,21 @@ jobs:
           mv app/android/app/build/outputs/bundle/release/app-release.aab mushaf-${{ github.run_number }}-unsigned.aab
           ls -la *.apk *.aab
 
+      - name: Sign the bundle for Google Play (when the signing key is saved in the repository secrets)
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then echo "No signing key in the secrets: only the unsigned bundle is published."; exit 0; fi
+          echo "$KEYSTORE_BASE64" | base64 -d > play.keystore
+          cp mushaf-*-unsigned.aab mushaf-play.aab
+          jarsigner -sigalg SHA256withRSA -digestalg SHA-256 -keystore play.keystore \
+            -storepass "$KEYSTORE_PASSWORD" -keypass "${KEY_PASSWORD:-$KEYSTORE_PASSWORD}" mushaf-play.aab "$KEY_ALIAS"
+          rm -f play.keystore
+          jarsigner -verify mushaf-play.aab | tail -1
+
       - uses: actions/upload-artifact@v5
         with:
           name: mushaf-app-${{ github.run_number }}
@@ -69,4 +84,8 @@ jobs:
         run: |
           gh release view app-test >/dev/null 2>&1 || gh release create app-test --title "تطبيق المصحف (تجريبي)" --notes "نسخة تجريبية للتثبيت المباشر على أندرويد." --prerelease
           cp mushaf-test-*.apk mushaf-test.apk
-          gh release upload app-test mushaf-test.apk mushaf-*-unsigned.aab --clobber
+          gh release upload app-test mushaf-test.apk --clobber
+          if [ -f mushaf-play.aab ]; then gh release upload app-test mushaf-play.aab --clobber; fi
+          # keep only the newest unsigned bundle
+          for a in $(gh release view app-test --json assets --jq '.assets[].name' | grep -- '-unsigned.aab$'); do gh release delete-asset app-test "$a" -y; done
+          gh release upload app-test mushaf-*-unsigned.aab --clobber
