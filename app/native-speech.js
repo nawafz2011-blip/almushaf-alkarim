@@ -2,7 +2,7 @@
    SpeechRecognition interface it uses in Chrome, backed by Android's recognizer (SpeechPlugin). */
 (function () {
   var P = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Speech;
-  if (!P || window.SpeechRecognition || window.webkitSpeechRecognition) return;
+  if (!P) return;   // the web view may define webkitSpeechRecognition but it does not work, so always use Android's
   var active = null;   // the recognition object currently listening
   function NativeSR() { this.lang = "ar-SA"; this.continuous = false; this.interimResults = false; this.maxAlternatives = 1; this._done = []; }
   function fire(o, name, ev) { var f = o["on" + name]; if (typeof f === "function") try { f.call(o, ev || {}); } catch (e) { console.error(e); } }
