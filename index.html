@@ -488,6 +488,7 @@ const BODY_B = { h: 40, mg: 25, tw: 427, ow: 17, oh: 20, fs: 140, top: 30, stop:
 // it follows the page's own text block, keeping room for the frame around it.
 const HAFS_TEXT = [49, 406];   // left/right edge of the text block on the hafs scans
 const FRAME_ROOM = 32;         // frame width beyond the text block, in units
+const OUTER_ROOM = 56;         // room beside the frame for the marks in the margin (hizb, sajda), in units
 const pdfMushaf = (key, name, pageH, open, inner, top, bottom) => ({
   name, ext: "jpg", coords: "hafs", warsh: false,
   H: p => 456 * pageH(p) / 562,
@@ -495,10 +496,19 @@ const pdfMushaf = (key, name, pageH, open, inner, top, bottom) => ({
   crop: (p, H) => {
     if (p === 1) return [inner[0], 456, 0, H];
     if (p === 2) return [0, inner[1], 0, H];
-    const [sx, bx] = MUSHAF_T[key][p - 1];
-    return p % 2
-      ? [Math.max(0, sx * HAFS_TEXT[0] + bx - FRAME_ROOM), 456, top(p), bottom(p)]
-      : [0, Math.min(456, sx * HAFS_TEXT[1] + bx + FRAME_ROOM), top(p), bottom(p)];
+    // the frame always in the same place: the same room around it on every page (white where the
+    // scan has less), so pages do not jump left/right or grow/shrink when turned. Facing pages on the
+    // computer sit close together on the binding side.
+    const f = window.MUSHAF_FRAME && MUSHAF_FRAME[key] && MUSHAF_FRAME[key][p - 1];
+    if (!f) {
+      const [sx, bx] = MUSHAF_T[key][p - 1];
+      return p % 2
+        ? [Math.max(0, sx * HAFS_TEXT[0] + bx - FRAME_ROOM), 456, top(p), bottom(p)]
+        : [0, Math.min(456, sx * HAFS_TEXT[1] + bx + FRAME_ROOM), top(p), bottom(p)];
+    }
+    const out = OUTER_ROOM, inn = twoUp() ? 4 : OUTER_ROOM;
+    const [l, r] = [f[0] * 456, f[1] * 456];
+    return [l - (p % 2 ? inn : out), r + (p % 2 ? out : inn), f[2] * H - 0.045 * H, f[3] * H + 0.032 * H];
   },
 });
 const MUSHAFS = {
