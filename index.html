@@ -808,7 +808,8 @@ const needsBasmala = o => o.a === 1 && o.s !== 1 && o.s !== 9;
 const SURAH_FILES = {
   luhaidan: { base: "https://nawafz2011-blip.github.io/luhaidan/", basmala: "audio/luhaidan-basmala.mp3", times: null },
   // still being tried out: only in the owner's browser for now
-  ...(window.OWNER ? { "Yasser_Ad-Dussary_128kbps": { json: "yasser", v: 2, pre: true, basmala: "audio/yasser-basmala.mp3", times: null,
+  ...(window.OWNER ? { "Yasser_Ad-Dussary_128kbps": { json: "yasser", v: 2, pre: true,
+    ayahs: [4],   // its An-Nisa file on mp3quran is low quality (16 kHz, 24 kbps) basmala: "audio/yasser-basmala.mp3", times: null,
     base: s => "https://nawafz2011-blip.github.io/yasser-dosari-" + (s <= 19 ? 1 : 2) + "/",
     split: { 2: [142, "002b", 3024.6] } } } : {}),
 };
@@ -826,7 +827,8 @@ function segLoad(src, t) {
   if (!OFF.have.has(src)) { audio.src = src + "#t=" + t; audio.play().catch(() => {}); return; }
   offSrc(src).then(u => { if (k !== segTok) return; audio.src = u + "#t=" + t; audio.play().catch(() => {}); });
 }
-const segRec = () => SURAH_FILES[rec()];
+// a surah listed in "ayahs" plays ayah by ayah from the reciter's everyayah files instead
+const segRec = () => { const g = SURAH_FILES[rec()], o = AY[playIdx]; return g && !(g.ayahs && o && g.ayahs.includes(o.s)) ? g : null; };
 let segSrc = "", segStart = 0, segEnd = null, segPausedAt = 0;
 const SEG_LEAD = 0.3;   // seconds the highlight moves ahead of the ayah's end when reading on
 // the ayah timing file; "v" changes whenever the timing is corrected, so no browser keeps an old copy

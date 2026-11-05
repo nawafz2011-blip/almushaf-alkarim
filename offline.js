@@ -86,10 +86,11 @@
   }
   // with the basmala; a reciter recorded a surah per file saves the whole files, its basmala and its ayah timing
   const urlsOf = r => {
-    const g = SURAH_FILES[r.id];
-    if (!g) return [urlOf(r.id, 1, 1)].concat(r.list.map(([s, a]) => urlOf(r.id, s, a)));
-    const ss = [...new Set(r.list.map(x => x[0]))];
-    return [segJson(r.id), abs(g.basmala)].concat(ss.flatMap(s => segFiles(g, s)));
+    const g = SURAH_FILES[r.id], one = ([s]) => g && g.ayahs && g.ayahs.includes(s);
+    const per = r.list.filter(x => !g || one(x)), whole = g ? r.list.filter(x => !one(x)) : [];
+    const ss = [...new Set(whole.map(x => x[0]))];
+    return (whole.length ? [segJson(r.id), abs(g.basmala)] : []).concat(ss.flatMap(s => segFiles(g, s)),
+      per.length ? [urlOf(r.id, 1, 1)].concat(per.map(([s, a]) => urlOf(r.id, s, a))) : []);
   };
   const title = e => e.s === 0 ? "المصحف كاملًا" : e.from === 1 && e.to === SURAHS[e.s - 1][1]
     ? `سورة ${surahName(e.s)} · كاملة` : `سورة ${surahName(e.s)} · من الآية ${AR(e.from)} إلى الآية ${AR(e.to)}`;
@@ -109,7 +110,7 @@
     const r = range(), n = r.list.length, tok = ++estTok;
     $d("dlInfo").textContent = `${AR(n)} آية`;
     if (SURAH_FILES[r.id]) {
-      Promise.all(urlsOf(r).slice(2).map(u => fetch(u, { method: "HEAD" }).then(x => +x.headers.get("content-length") || 0)))
+      Promise.all(urlsOf(r).filter(u => !u.endsWith(".json") && !u.includes("basmala")).map(u => fetch(u, { method: "HEAD" }).then(x => +x.headers.get("content-length") || 0)))
         .then(sz => { const t = sz.reduce((x, y) => x + y, 0); if (tok === estTok && t) $d("dlInfo").textContent = `${AR(n)} آية · الحجم تقريبًا ${mb(t)}`; }).catch(() => {});
       return;
     }
