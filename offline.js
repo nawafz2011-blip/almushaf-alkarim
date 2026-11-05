@@ -89,7 +89,7 @@
     const g = SURAH_FILES[r.id];
     if (!g) return [urlOf(r.id, 1, 1)].concat(r.list.map(([s, a]) => urlOf(r.id, s, a)));
     const ss = [...new Set(r.list.map(x => x[0]))];
-    return [abs("audio/" + (g.json || r.id) + ".json"), abs(g.basmala)].concat(ss.flatMap(s => segFiles(g, s)));
+    return [segJson(r.id), abs(g.basmala)].concat(ss.flatMap(s => segFiles(g, s)));
   };
   const title = e => e.s === 0 ? "المصحف كاملًا" : e.from === 1 && e.to === SURAHS[e.s - 1][1]
     ? `سورة ${surahName(e.s)} · كاملة` : `سورة ${surahName(e.s)} · من الآية ${AR(e.from)} إلى الآية ${AR(e.to)}`;

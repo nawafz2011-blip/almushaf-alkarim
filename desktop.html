@@ -697,7 +697,7 @@ const needsBasmala = o => o.a === 1 && o.s !== 1 && o.s !== 9;
 const SURAH_FILES = {
   luhaidan: { base: "https://nawafz2011-blip.github.io/luhaidan/", basmala: "audio/luhaidan-basmala.mp3", times: null },
   // still being tried out: only in the owner's browser for now
-  ...(window.OWNER ? { "Yasser_Ad-Dussary_128kbps": { json: "yasser", pre: true, basmala: "audio/yasser-basmala.mp3", times: null,
+  ...(window.OWNER ? { "Yasser_Ad-Dussary_128kbps": { json: "yasser", v: 2, pre: true, basmala: "audio/yasser-basmala.mp3", times: null,
     base: s => "https://nawafz2011-blip.github.io/yasser-dosari-" + (s <= 19 ? 1 : 2) + "/",
     split: { 2: [142, "002b", 3024.6] } } } : {}),
 };
@@ -718,7 +718,9 @@ function segLoad(src, t) {
 const segRec = () => SURAH_FILES[rec()];
 let segSrc = "", segStart = 0, segEnd = null, segPausedAt = 0;
 const SEG_LEAD = 0.3;   // seconds the highlight moves ahead of the ayah's end when reading on
-const loadSeg = id => { const u = new URL("audio/" + (SURAH_FILES[id].json || id) + ".json", location.href).href;
+// the ayah timing file; "v" changes whenever the timing is corrected, so no browser keeps an old copy
+const segJson = id => new URL("audio/" + (SURAH_FILES[id].json || id) + ".json" + (SURAH_FILES[id].v ? "?v=" + SURAH_FILES[id].v : ""), location.href).href;
+const loadSeg = id => { const u = segJson(id);
   return fetch(u).catch(() => caches.match(u).then(r => r || Promise.reject())).then(r => r.json()).then(t => { SURAH_FILES[id].times = t; }); };
 const ayahLen = () => segRec() ? (segEnd ?? audio.duration ?? 0) - segStart : (audio.duration || 0);
 
