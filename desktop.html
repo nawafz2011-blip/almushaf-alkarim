@@ -697,7 +697,7 @@ const needsBasmala = o => o.a === 1 && o.s !== 1 && o.s !== 9;
 const SURAH_FILES = {
   luhaidan: { base: "https://nawafz2011-blip.github.io/luhaidan/", basmala: "audio/luhaidan-basmala.mp3", times: null },
   // still being tried out: only in the owner's browser for now
-  ...(window.OWNER ? { "Yasser_Ad-Dussary_128kbps": { json: "yasser", v: 3, pre: true, basmala: "audio/yasser-basmala.mp3", times: null,
+  ...(window.OWNER ? { "Yasser_Ad-Dussary_128kbps": { json: "yasser", v: 4, pre: true, basmala: "audio/yasser-basmala.mp3", times: null,
     base: s => "https://nawafz2011-blip.github.io/yasser-dosari-" + (s <= 19 ? 1 : 2) + "/",
     split: { 2: [142, "002b", 3024.6] } } } : {}),
 };
