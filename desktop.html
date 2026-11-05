@@ -691,11 +691,35 @@ const needsBasmala = o => o.a === 1 && o.s !== 1 && o.s !== 9;
 // surah's file, from the ayah start times worked out from the recording (audio/<id>.json).
 // These are prayer recordings: the basmala is silent there, so it plays from its own short file.
 // A surah's list may carry one more time than it has ayahs: where its last ayah ends (al-Fatiha: before «آمين»).
-const SURAH_FILES = { luhaidan: { base: "https://nawafz2011-blip.github.io/luhaidan/", basmala: "audio/luhaidan-basmala.mp3", times: null } };
+// pre: the surah file opens with the reciter's own basmala (and sometimes the isti'adha) before its first
+// ayah; where it does not, the basmala plays from its own short file. split: a surah too big for one file
+// goes on in a second file from that ayah ([ayah, file name, where that file starts in the surah]).
+const SURAH_FILES = {
+  luhaidan: { base: "https://nawafz2011-blip.github.io/luhaidan/", basmala: "audio/luhaidan-basmala.mp3", times: null },
+  // still being tried out: only in the owner's browser for now
+  ...(window.OWNER ? { "Yasser_Ad-Dussary_128kbps": { json: "yasser", pre: true, basmala: "audio/yasser-basmala.mp3", times: null,
+    base: s => "https://nawafz2011-blip.github.io/yasser-dosari-" + (s <= 19 ? 1 : 2) + "/",
+    split: { 2: [142, "002b", 3024.6] } } } : {}),
+};
+// the file an ayah is in, and where that file starts in the surah's timing
+const segFile = (g, s, a) => {
+  const base = typeof g.base === "function" ? g.base(s) : g.base, p = g.split && g.split[s];
+  return p && a >= p[0] ? [base + p[1] + ".mp3", p[2]] : [base + pad(s) + ".mp3", 0];
+};
+// every file a surah needs (to save it for listening without internet)
+const segFiles = (g, s) => [segFile(g, s, 1)[0]].concat(g.split && g.split[s] ? [segFile(g, s, g.split[s][0])[0]] : []);
+// the file plays from the saved copy when there is one
+let segTok = 0;
+function segLoad(src, t) {
+  const k = ++segTok;
+  if (!OFF.have.has(src)) { audio.src = src + "#t=" + t; audio.play().catch(() => {}); return; }
+  offSrc(src).then(u => { if (k !== segTok) return; audio.src = u + "#t=" + t; audio.play().catch(() => {}); });
+}
 const segRec = () => SURAH_FILES[rec()];
 let segSrc = "", segStart = 0, segEnd = null, segPausedAt = 0;
 const SEG_LEAD = 0.3;   // seconds the highlight moves ahead of the ayah's end when reading on
-const loadSeg = id => fetch("audio/" + id + ".json").then(r => r.json()).then(t => { SURAH_FILES[id].times = t; });
+const loadSeg = id => { const u = new URL("audio/" + (SURAH_FILES[id].json || id) + ".json", location.href).href;
+  return fetch(u).catch(() => caches.match(u).then(r => r || Promise.reject())).then(r => r.json()).then(t => { SURAH_FILES[id].times = t; }); };
 const ayahLen = () => segRec() ? (segEnd ?? audio.duration ?? 0) - segStart : (audio.duration || 0);
 
 const refText = i => SURAHS[AY[i].s - 1][0] + " " + ar(AY[i].a);
@@ -727,19 +751,27 @@ function playAyah(i, fresh = true) {
   const o = AY[i], g = segRec();
   if (g) {
     if (!g.times) { loadSeg(rec()).then(() => { if (playing && playIdx === i) playAyah(i, fresh); }, () => stop()); setPlayBtn(); return; }
-    if ((o.s === 1 && o.a === 1) || (needsBasmala(o) && fresh)) {
+    const T = g.times[o.s]; if (!T) { stop(); return; }
+    if (g.pre && needsBasmala(o) && fresh && T[0] > 2) {
+      // the surah's own opening, up to its first ayah
+      inBasmala = true; segStart = 0; segEnd = T[0];
+      const src = segFile(g, o.s, 1)[0];
+      if (segSrc !== src) { segSrc = src; segLoad(src, 0); } else { audio.currentTime = 0; audio.play().catch(() => {}); }
+      setPlayBtn(); updateNote(); paint();
+      return;
+    }
+    if ((o.s === 1 && o.a === 1 && !g.pre) || (needsBasmala(o) && fresh)) {
       inBasmala = o.s !== 1;            // in al-Fatiha the basmala is the ayah itself
-      segSrc = g.basmala; segStart = 0; segEnd = null; audio.src = g.basmala;
-      audio.play().catch(() => {});
+      segSrc = g.basmala; segStart = 0; segEnd = null; segLoad(g.basmala, 0);
       setPlayBtn(); updateNote(); paint();
       return;
     }
     inBasmala = false;
-    const T = g.times[o.s]; if (!T) { stop(); return; }
-    segStart = T[o.a - 1]; segEnd = o.a < T.length ? T[o.a] : null;
-    const src = g.base + pad(o.s) + ".mp3";
+    const [src, off] = segFile(g, o.s, o.a);
+    segStart = T[o.a - 1] - off; segEnd = o.a < T.length ? T[o.a] - off : null;
+    if (g.split && g.split[o.s] && o.a + 1 === g.split[o.s][0]) segEnd = null;   // the first file ends with this ayah
     // carrying straight on into the next ayah of the same file: no seek, so there is no gap
-    if (segSrc !== src) { segSrc = src; audio.src = src + "#t=" + segStart; }
+    if (segSrc !== src) { segSrc = src; segLoad(src, segStart); return setPlayBtn(), updateNote(), paint(); }
     else if (audio.currentTime < segStart - SEG_LEAD - 0.3 || audio.currentTime > segStart + 0.6) audio.currentTime = segStart;
     audio.play().catch(() => {});
     setPlayBtn(); updateNote(); paint();
@@ -804,7 +836,9 @@ audio.addEventListener("timeupdate", () => {
 });
 // A whole-surah file: the ayah ends where the next one starts
 setInterval(() => {
-  if (!playing || !segRec() || segEnd == null || inBasmala) return;
+  if (!playing || !segRec() || segEnd == null) return;
+  // the surah's own basmala: go on into its first ayah without a seek
+  if (inBasmala) { if (audio.currentTime >= segEnd - 0.05) { inBasmala = false; playAyah(playIdx, false); } return; }
   // reading straight on: move the highlight a little before the pause, so it does not trail the reciter
   const on = !session && $("autoNext").checked && playIdx + 1 < AY.length && AY[playIdx + 1].s === AY[playIdx].s;
   if (on && audio.currentTime >= segEnd - SEG_LEAD) return playAyah(playIdx + 1);

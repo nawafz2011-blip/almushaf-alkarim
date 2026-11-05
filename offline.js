@@ -5,7 +5,8 @@
   const CACHE = "recitations-v1", LIST = "offlineList";
   const AR = n => String(n).replace(/\d/g, d => "٠١٢٣٤٥٦٧٨٩"[d]);
   const P3 = n => String(n).padStart(3, "0");
-  const allReciters = () => RECITERS.concat(RECITERS_WARSH).filter(r => !SURAH_FILES[r[0]]);
+  const allReciters = () => RECITERS.concat(RECITERS_WARSH).filter(r => !SURAH_FILES[r[0]] || window.OWNER);  // surah-file reciters: owner only while being tried out
+  const abs = u => new URL(u, location.href).href;
   const nameOf = id => (allReciters().find(r => r[0] === id) || [id, id])[1];
   // the UI font has no Uthmani marks: the small high sukun becomes a normal sukun, the rest are dropped
   const surahName = s => SURAHS[s - 1][0].replace(/\u06E1/g, "\u0652").replace(/[\u06D6-\u06ED]/g, "");
@@ -83,7 +84,13 @@
     }
     return { id, s, from, to, list: Array.from({ length: to - from + 1 }, (_, k) => [s, from + k]) };
   }
-  const urlsOf = r => [urlOf(r.id, 1, 1)].concat(r.list.map(([s, a]) => urlOf(r.id, s, a)));   // with the basmala
+  // with the basmala; a reciter recorded a surah per file saves the whole files, its basmala and its ayah timing
+  const urlsOf = r => {
+    const g = SURAH_FILES[r.id];
+    if (!g) return [urlOf(r.id, 1, 1)].concat(r.list.map(([s, a]) => urlOf(r.id, s, a)));
+    const ss = [...new Set(r.list.map(x => x[0]))];
+    return [abs("audio/" + (g.json || r.id) + ".json"), abs(g.basmala)].concat(ss.flatMap(s => segFiles(g, s)));
+  };
   const title = e => e.s === 0 ? "المصحف كاملًا" : e.from === 1 && e.to === SURAHS[e.s - 1][1]
     ? `سورة ${surahName(e.s)} · كاملة` : `سورة ${surahName(e.s)} · من الآية ${AR(e.from)} إلى الآية ${AR(e.to)}`;
   const doneMsg = e => {
@@ -101,6 +108,11 @@
     modal.querySelectorAll(".dl-tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.k === kind));
     const r = range(), n = r.list.length, tok = ++estTok;
     $d("dlInfo").textContent = `${AR(n)} آية`;
+    if (SURAH_FILES[r.id]) {
+      Promise.all(urlsOf(r).slice(2).map(u => fetch(u, { method: "HEAD" }).then(x => +x.headers.get("content-length") || 0)))
+        .then(sz => { const t = sz.reduce((x, y) => x + y, 0); if (tok === estTok && t) $d("dlInfo").textContent = `${AR(n)} آية · الحجم تقريبًا ${mb(t)}`; }).catch(() => {});
+      return;
+    }
     const pick = [0, n >> 1, n - 1].map(k => r.list[k]).filter((x, k, a) => a.findIndex(y => y === x) === k);
     Promise.all(pick.map(([s, a]) => fetch(urlOf(r.id, s, a), { method: "HEAD" }).then(x => +x.headers.get("content-length") || 0)))
       .then(sz => {
@@ -133,7 +145,7 @@
     const show = () => {
       const p = Math.round(done / total * 100);
       $d("dlBar").style.width = p + "%";
-      $d("dlPt1").textContent = `آية ${AR(Math.min(done, total))} من ${AR(total)}`;
+      $d("dlPt1").textContent = `${SURAH_FILES[r.id] ? "ملف" : "آية"} ${AR(Math.min(done, total))} من ${AR(total)}`;
       $d("dlPt2").textContent = `${AR(p)}٪ · ${mb(bytes)}`;
     };
     show();
@@ -147,7 +159,7 @@
             const res = await fetch(u);
             if (!res.ok) throw new Error(res.status);
             const blob = await res.blob();
-            await c.put(u, new Response(blob, { headers: { "Content-Type": "audio/mpeg", "Content-Length": String(blob.size) } }));
+            await c.put(u, new Response(blob, { headers: { "Content-Type": blob.type || "audio/mpeg", "Content-Length": String(blob.size) } }));
             OFF.have.add(u); bytes += blob.size;
           }
         } catch (e) { failed++; }
@@ -158,7 +170,7 @@
     const stopped = busy.stop; busy = null;
     $d("dlGo").hidden = false; $d("dlProg").hidden = true;
     if (stopped) return;
-    if (failed) { toast(`تعذّر تنزيل ${AR(failed)} من الآيات. تأكد من اتصال الإنترنت ثم أعد المحاولة.`, false); return; }
+    if (failed) { toast(`تعذّر تنزيل ${AR(failed)} من ${SURAH_FILES[r.id] ? "الملفات" : "الآيات"}. تأكد من اتصال الإنترنت ثم أعد المحاولة.`, false); return; }
     const e = { id: r.id, s: r.s, from: r.from, to: r.to, bytes };
     const l = load().filter(x => !(x.id === e.id && x.s === e.s && x.from === e.from && x.to === e.to));
     l.unshift(e); save(l); renderList();
