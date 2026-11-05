@@ -83,7 +83,7 @@ if ("serviceWorker" in navigator) addEventListener("load", () => navigator.servi
   }
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body { margin: 0; }
+html, body { margin: 0; overflow-x: clip; }
 body {
   background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 16px;
   touch-action: manipulation; overscroll-behavior-y: none;
@@ -205,6 +205,7 @@ input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--accent); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
+.ic { width: 1.15em; height: 1.15em; vertical-align: -0.22em; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; margin-inline-end: .4em; flex: none; }
 .btn {
   font: inherit; font-size: 16px; color: var(--ink); background: var(--surface);
   border: 1px solid var(--line); border-radius: 10px; padding: 11px 18px; cursor: pointer;
@@ -309,7 +310,7 @@ input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--accent); }
 <div class="modal" id="followModal" hidden>
   <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="followTitle">
     <div class="dialog-head">
-      <h2 id="followTitle">🎙 تابعني · نسخة تجريبية</h2>
+      <h2 id="followTitle"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>تابعني · نسخة تجريبية</h2>
       <button class="icon-btn" id="followCancelX" aria-label="إغلاق">✕</button>
     </div>
     <div style="line-height:1.9">
@@ -330,9 +331,9 @@ input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--accent); }
       <h2 id="bmTitle">الفاصل</h2>
       <button class="icon-btn" data-close aria-label="إغلاق">✕</button>
     </div>
-    <button class="btn primary" id="bmSave">🔖 حفظ الفاصل عند الآية الحالية</button>
+    <button class="btn primary" id="bmSave"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10a1 1 0 0 1 1 1v17l-6-4-6 4V4a1 1 0 0 1 1-1z"/></svg>حفظ الفاصل عند الآية الحالية</button>
     <div class="note" id="bmGoLabel"></div>
-    <button class="btn" id="bmGo">↩ الذهاب إلى الفاصل</button>
+    <button class="btn" id="bmGo"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14l-4-4 4-4"/><path d="M5 10h9a5 5 0 0 1 0 10h-3"/></svg>الذهاب إلى الفاصل</button>
   </div>
 </div>
 
@@ -351,7 +352,7 @@ input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--accent); }
       <label class="field">الصفحة <input id="pageInput" type="number" inputmode="numeric" min="1" max="604"></label>
     </div>
     <label class="field inline"><input type="checkbox" id="autoNext" checked> متابعة التلاوة للآية التالية</label>
-    <button type="button" class="btn" id="dlOpen">⬇ الاستماع دون اتصال بالإنترنت</button>
+    <button type="button" class="btn" id="dlOpen"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg>الاستماع دون اتصال بالإنترنت</button>
     <section id="tajweedKey" hidden>
       <div class="label" style="margin-bottom:6px">ألوان التجويد</div>
       <div class="legend">
@@ -1173,7 +1174,7 @@ function goTo(i) {
   sBox.hidden = true; sIn.blur();
   playing ? playAyah(i) : select(i);
 }
-function showResults(html) { sBox.innerHTML = html; sBox.hidden = false; sOn = -1; sItems = [...sBox.querySelectorAll(".res")]; }
+function showResults(html) { sBox.innerHTML = html.replace(/🎙\s*/g, ICON.mic).replace(/[✅✓]\s*/g, ICON.ok); sBox.hidden = false; sOn = -1; sItems = [...sBox.querySelectorAll(".res")]; }
 function runSearch() {
   const raw = sIn.value.trim();
   if (!raw) { sBox.hidden = true; return; }
@@ -1241,9 +1242,9 @@ function saveBookmark() {
   const i = (playing || paused) ? playIdx : (cur >= 0 ? cur : X().first[page - 1]);
   store.set("bookmark", AY[i].s + "_" + AY[i].a);
   updateBm(); paint();
-  const b = $("bmSave"), t = b.textContent;
-  b.textContent = "✓ حُفظ الفاصل"; b.disabled = true;
-  setTimeout(() => { b.textContent = t; b.disabled = false; }, 1400);
+  const b = $("bmSave"), t = b.innerHTML;
+  b.innerHTML = ICON.ok + "حُفظ الفاصل"; b.disabled = true;
+  setTimeout(() => { b.innerHTML = t; b.disabled = false; }, 1400);
 }
 function goBookmark() {
   const i = bmIdx(); if (i < 0) return;
@@ -1315,12 +1316,13 @@ function followWords(from) {
   return words;
 }
 const followAt = i => Math.max(0, fol.words.findIndex(x => x.i === i));
+const ICON = { ok: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16 9.8"/></svg>', mic: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>', play: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor" stroke="none"/></svg>', pause: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="5" width="3.6" height="14" rx="1" fill="currentColor" stroke="none"/><rect x="13.9" y="5" width="3.6" height="14" rx="1" fill="currentColor" stroke="none"/></svg>' };
 function followStatus(t) {
   const n = $("followNote"); n.hidden = !t; n.textContent = "";
   if (!t) return;
   const mic = t.startsWith("🎙");
   if (mic) { t = t.replace(/^🎙\s*/, ""); n.insertAdjacentHTML("beforeend", '<svg viewBox="0 0 16 24" width="11" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="vertical-align:-3px;margin-inline-end:5px"><rect x="3.5" y="1.5" width="9" height="13" rx="4.5"/><path d="M5.5 6h5M5.5 9h5M5.5 12h5M8 14.5v5"/><rect x="5" y="19.5" width="6" height="3" rx="1"/></svg>'); }
-  n.append(t);
+  t.split("✓").forEach((part, k) => { if (k) n.insertAdjacentHTML("beforeend", ICON.ok); n.append(part); });
 }
 // Very common words (الله، الذين، من، في…) appear on every page, so on their own they must not move the highlight
 const COMMON = new Set("الله لله بالله والله الذين الذي والذين الا ان من في ما لا على هو هم قال قالوا وما ومن ولا انه انا اني كان كانوا لهم له به عن الى اذا ثم او قد لم لن يا هذا ذلك التي".split(" "));

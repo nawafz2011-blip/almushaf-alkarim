@@ -54,7 +54,7 @@
       <label class="field">إلى الآية <input id="dlTo" type="number" inputmode="numeric" min="1"></label>
     </div>
     <div class="dl-info" id="dlInfo"></div>
-    <button type="button" class="btn dl-go" id="dlGo">⬇ تنزيل</button>
+    <button type="button" class="btn dl-go" id="dlGo"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg>تنزيل</button>
     <div id="dlProg" hidden>
       <div class="dl-bar"><i id="dlBar"></i></div>
       <div class="dl-pt"><span id="dlPt1"></span><span id="dlPt2"></span></div>
@@ -88,9 +88,9 @@
     ? `سورة ${surahName(e.s)} · كاملة` : `سورة ${surahName(e.s)} · من الآية ${AR(e.from)} إلى الآية ${AR(e.to)}`;
   const doneMsg = e => {
     const who = `بصوت الشيخ ${nameOf(e.id)}`;
-    if (e.s === 0) return `✓ تم تنزيل المصحف كاملًا ${who}، ويمكنك الاستماع إليه الآن دون اتصال بالإنترنت`;
+    if (e.s === 0) return `تم تنزيل المصحف كاملًا ${who}، ويمكنك الاستماع إليه الآن دون اتصال بالإنترنت`;
     const full = e.from === 1 && e.to === SURAHS[e.s - 1][1];
-    return `✓ تم تنزيل سورة ${surahName(e.s)}${full ? "" : ` من الآية ${AR(e.from)} إلى الآية ${AR(e.to)}`} ${who}، ويمكنك الاستماع إليها الآن دون اتصال بالإنترنت`;
+    return `تم تنزيل سورة ${surahName(e.s)}${full ? "" : ` من الآية ${AR(e.from)} إلى الآية ${AR(e.to)}`} ${who}، ويمكنك الاستماع إليها الآن دون اتصال بالإنترنت`;
   };
 
   // an estimate before downloading: the size of a few ayahs of this reciter, scaled to the whole range
@@ -112,13 +112,13 @@
 
   function renderList() {
     const l = load();
-    $d("dlList").innerHTML = l.length ? l.map((e, k) => `<div class="dl-item"><div class="dl-play" data-play="${k}" role="button" tabindex="0"><b>▶ ${title(e)}</b><span>الشيخ ${nameOf(e.id)}${e.bytes ? " · " + mb(e.bytes) : ""}</span></div>
+    $d("dlList").innerHTML = l.length ? l.map((e, k) => `<div class="dl-item"><div class="dl-play" data-play="${k}" role="button" tabindex="0"><b><svg class="ic" style="color:var(--accent)" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor" stroke="none"/></svg>${title(e)}</b><span>الشيخ ${nameOf(e.id)}${e.bytes ? " · " + mb(e.bytes) : ""}</span></div>
       <button type="button" class="btn" data-del="${k}">حذف</button></div>`).join("")
       : '<div class="dl-empty">لم تُنزّل شيئًا بعد.</div>';
   }
 
-  function toast(text) {
-    const t = $d("dlToast"); t.textContent = text; t.hidden = false;
+  function toast(text, ok = true) {
+    const t = $d("dlToast"); t.textContent = text; if (ok) t.insertAdjacentHTML("afterbegin", '<svg class="ic" style="color:#8fd3bf" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16 9.8"/></svg>'); t.hidden = false;
     clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 6000);
   }
 
@@ -158,7 +158,7 @@
     const stopped = busy.stop; busy = null;
     $d("dlGo").hidden = false; $d("dlProg").hidden = true;
     if (stopped) return;
-    if (failed) { toast(`تعذّر تنزيل ${AR(failed)} من الآيات. تأكد من اتصال الإنترنت ثم أعد المحاولة.`); return; }
+    if (failed) { toast(`تعذّر تنزيل ${AR(failed)} من الآيات. تأكد من اتصال الإنترنت ثم أعد المحاولة.`, false); return; }
     const e = { id: r.id, s: r.s, from: r.from, to: r.to, bytes };
     const l = load().filter(x => !(x.id === e.id && x.s === e.s && x.from === e.from && x.to === e.to));
     l.unshift(e); save(l); renderList();
