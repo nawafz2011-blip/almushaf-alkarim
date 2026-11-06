@@ -5,7 +5,7 @@
   const CACHE = "recitations-v1", LIST = "offlineList";
   const AR = n => String(n).replace(/\d/g, d => "٠١٢٣٤٥٦٧٨٩"[d]);
   const P3 = n => String(n).padStart(3, "0");
-  const allReciters = () => RECITERS.concat(RECITERS_WARSH).filter(r => !SURAH_FILES[r[0]] || window.OWNER);  // surah-file reciters: owner only while being tried out
+  const allReciters = () => RECITERS.concat(RECITERS_WARSH).filter(r => !SURAH_FILES[r[0]] || SURAH_FILES[r[0]].dl || window.OWNER);  // surah-file reciters: once released ("dl"), or the owner trying one out
   const abs = u => new URL(u, location.href).href;
   const nameOf = id => (allReciters().find(r => r[0] === id) || [id, id])[1];
   // the UI font has no Uthmani marks: the small high sukun becomes a normal sukun, the rest are dropped
