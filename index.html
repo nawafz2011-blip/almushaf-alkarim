@@ -507,7 +507,8 @@ const pdfMushaf = (key, name, pageH, open, inner, top, bottom) => ({
         ? [Math.max(0, sx * HAFS_TEXT[0] + bx - FRAME_ROOM), 456, top(p), bottom(p)]
         : [0, Math.min(456, sx * HAFS_TEXT[1] + bx + FRAME_ROOM), top(p), bottom(p)];
     }
-    const out = OUTER_ROOM, inn = twoUp() ? 4 : OUTER_ROOM;
+    // no room on the binding side, where there are no marks (like a printed mushaf): the page is larger
+    const out = OUTER_ROOM, inn = 4;
     const [l, r] = [f[0] * 456, f[1] * 456];
     return [l - (p % 2 ? inn : out), r + (p % 2 ? out : inn), f[2] * H - 0.045 * H, f[3] * H + 0.032 * H];
   },
