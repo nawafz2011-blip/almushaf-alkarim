@@ -24,7 +24,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="المصحف الكريم">
-<title>مُصحف | المصحف الشريف أونلاين مع التلاوة والتفسير</title>
+<title>تجربة · مُصحف | المصحف الشريف أونلاين مع التلاوة والتفسير</title>
 <meta name="description" content="اقرأ القرآن الكريم أونلاين بصفحات المصحف: مصحف المدينة، مصحف التجويد الملون، ورش. استمع لتلاوة أشهر القراء آية بآية مع التفسير الميسّر والبحث في الآيات والسور.">
 <meta name="keywords" content="مصحف, القرآن الكريم, مصحف الكتروني, مصحف أونلاين, قراءة القرآن, تلاوة, تفسير, مصحف التجويد, مصحف المدينة, mushaf, quran">
 <link rel="canonical" href="https://mushaff.com/">
@@ -813,7 +813,7 @@ const SURAH_FILES = {
     base: s => "https://nawafz2011-blip.github.io/yasser-dosari-" + (s <= 19 ? 1 : 2) + "/",
     split: { 2: [142, "002b", 3024.6] } },
   // still being tried out: only in the owner's browser for now
-  ...(window.OWNER ? { "Fares_Abbad_64kbps": { json: "fares", v: 1, pre: true, basmala: "audio/fares-basmala.mp3", times: null,
+  ...(true ? { "Fares_Abbad_64kbps": { json: "fares", v: 1, pre: true, basmala: "audio/fares-basmala.mp3", times: null,
     base: s => "https://nawafz2011-blip.github.io/fares-abbad-" + (s <= 19 ? 1 : 2) + "/",
     split: { 2: [142, "002b", 2840.0] } } } : {}),
 };
