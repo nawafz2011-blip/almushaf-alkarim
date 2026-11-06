@@ -1,4 +1,5 @@
 User-agent: *
 Allow: /
+Disallow: /test.html
 
 Sitemap: https://mushaff.com/sitemap.xml

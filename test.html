@@ -1,0 +1,1599 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<!-- Owner preview: things still being tried out (the reciter محمد اللحيدان) show only in the owner's browser.
+     The owner opens the site once with ?key=… and this browser remembers it (window.OWNER). -->
+<script>
+(function () {
+  var H = 1493042218, h = function (s) { var x = 5381; for (var i = 0; i < s.length; i++) x = ((x * 33) ^ s.charCodeAt(i)) >>> 0; return x; };
+  try {
+    var q = new URLSearchParams(location.search), k = q.get("key");
+    if (k && h(k) === H) { localStorage.setItem("siteKey", k); q.delete("key"); history.replaceState(null, "", location.pathname + (q.toString() ? "?" + q : "") + location.hash); }
+    var s = localStorage.getItem("siteKey");
+    window.OWNER = !!s && h(s) === H;
+  } catch (e) { window.OWNER = false; }
+})();
+</script>
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- The site has its own light and dark look: this stops browsers (Samsung Internet's dark mode) from darkening or inverting the mushaf pages -->
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#fbfbf8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#19211f" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="المصحف الكريم">
+<title>مُصحف | المصحف الشريف أونلاين مع التلاوة والتفسير</title>
+<meta name="description" content="اقرأ القرآن الكريم أونلاين بصفحات المصحف: مصحف المدينة، مصحف التجويد الملون، ورش. استمع لتلاوة أشهر القراء آية بآية مع التفسير الميسّر والبحث في الآيات والسور.">
+<meta name="keywords" content="مصحف, القرآن الكريم, مصحف الكتروني, مصحف أونلاين, قراءة القرآن, تلاوة, تفسير, مصحف التجويد, مصحف المدينة, mushaf, quran">
+<link rel="canonical" href="https://mushaff.com/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="مُصحف">
+<meta property="og:title" content="مُصحف | المصحف الشريف أونلاين مع التلاوة والتفسير">
+<meta property="og:description" content="اقرأ القرآن الكريم أونلاين بصفحات المصحف: مصحف المدينة، مصحف التجويد الملون، ورش. استمع لتلاوة أشهر القراء آية بآية مع التفسير الميسّر والبحث في الآيات والسور.">
+<meta property="og:url" content="https://mushaff.com/">
+<meta property="og:locale" content="ar_AR">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"مُصحف","alternateName":["المصحف الشريف","Mushaff"],"url":"https://mushaff.com/","inLanguage":"ar"}</script>
+<script>
+// Phone and computer layouts live in two pages; a choice made with the switch button is remembered
+(function () {
+  var v = null; try { v = localStorage.getItem("view"); } catch (e) {}
+  var want = v || (window.innerWidth >= 1000 ? "desktop" : "mobile");
+  // test page: stays on the phone layout
+})();
+function switchView(to, url) {
+  try { localStorage.setItem("view", to); } catch (e) {}
+  location.href = url + location.hash;
+}
+</script>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" type="image/png" sizes="96x96" href="/icons/favicon-96.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<script>
+// Installable app: the service worker keeps pages that were read available offline
+if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
+</script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Noto+Naskh+Arabic:wght@400;600&display=swap">
+<style>
+:root { color-scheme: light dark; }
+:root {
+  --bg: #e9ede8;
+  --surface: #fbfbf8;
+  --ink: #1d2320;
+  --muted: #5f6b64;
+  --accent: #1f5e5b;
+  --accent-soft: #dcebe7;
+  --line: #d3dacf;
+  --hover: rgba(31, 94, 91, .13);
+  --sel: rgba(214, 170, 60, .30);
+  --play: rgba(31, 140, 120, .30);
+  --font-ui: "IBM Plex Sans Arabic", "Geeza Pro", "Segoe UI", Tahoma, sans-serif;
+  --font-body: "Noto Naskh Arabic", "Geeza Pro", serif;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-t: env(safe-area-inset-top, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111716; --surface: #19211f; --ink: #e9e6dc; --muted: #9aa8a2;
+    --accent: #6fbcb4; --accent-soft: #1f3432; --line: #2c3735;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; overflow-x: clip; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 16px;
+  touch-action: manipulation; overscroll-behavior-y: none;
+}
+/* The whole app is a single phone-width column, also on a computer */
+.app { max-width: 520px; margin: 0 auto; min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
+
+/* ---------- Top bar: search + settings ---------- */
+.top {
+  position: sticky; top: 0; z-index: 20; background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  padding: calc(8px + var(--safe-t)) 12px 8px;
+  display: flex; gap: 8px; align-items: center;
+}
+.search { position: relative; flex: 1; min-width: 0; }
+.search input {
+  width: 100%; font: inherit; font-size: 16px; color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 20px; padding: 9px 16px;
+}
+.search input:focus { background: var(--surface); outline: none; border-color: var(--accent); }
+.results {
+  position: fixed; top: calc(60px + var(--safe-t)); left: 50%; transform: translateX(-50%);
+  width: min(520px, 100vw); z-index: 40; background: var(--surface);
+  border-bottom: 1px solid var(--line); box-shadow: 0 16px 40px -18px rgba(0,0,0,.45);
+  max-height: calc(100dvh - 60px - var(--safe-t)); overflow: auto; padding: 6px 8px 16px;
+}
+.res-head { font-size: 13px; color: var(--muted); padding: 8px 8px 4px; }
+.res { display: block; width: 100%; text-align: start; font: inherit; color: var(--ink); background: none; border: 0; border-radius: 8px; padding: 10px; cursor: pointer; }
+.res:active, .res.on { background: var(--accent-soft); }
+.res .rr { color: var(--accent); font-family: var(--font-body); font-size: 15px; font-weight: 600; }
+.res .rt { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-family: var(--font-body); font-size: 18px; line-height: 1.9; }
+.res mark { background: var(--sel); color: inherit; border-radius: 3px; }
+.res-empty { padding: 12px 8px; color: var(--muted); font-size: 15px; }
+
+.round {
+  flex: none; width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--line);
+  background: var(--surface); color: var(--ink); display: grid; place-items: center; cursor: pointer; padding: 0;
+}
+.round svg { width: 22px; height: 22px; }
+.round:active { background: var(--accent-soft); }
+
+/* ---------- Page ---------- */
+.main { flex: 1; display: flex; justify-content: center; align-items: flex-start; padding: 8px 6px; }
+.spread { display: flex; justify-content: center; touch-action: pan-y pinch-zoom; transition: opacity .15s, transform .15s; }
+.spread.turn-next { opacity: 0; transform: translateX(30px); }
+.spread.turn-prev { opacity: 0; transform: translateX(-30px); }
+.page {
+  position: relative; height: var(--ph, 600px); width: auto; flex: none; overflow: hidden;
+  background: #fff; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,.18), 0 10px 26px -16px rgba(0,0,0,.4);
+}
+.page img { position: absolute; display: block; max-width: none; height: auto; user-select: none; -webkit-user-select: none; -webkit-user-drag: none; -webkit-touch-callout: none; }
+.hl { position: absolute; border-radius: 3px; cursor: pointer; }
+/* zoom mode: the page is larger than the screen and the area scrolls to follow the ayah */
+body.zoom .main { flex: none; display: block; height: var(--zh, 70vh); overflow: auto; padding: 8px; -webkit-overflow-scrolling: touch; }
+body.zoom .spread { width: max-content; margin: 0 auto; touch-action: auto; }
+.round.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+@media (hover: hover) { .hl.hover { background: var(--hover); } }
+.hl.sel { background: var(--sel); }
+.hl.play { background: var(--play); }
+.hl.bm { box-shadow: inset 0 -3px 0 #d4a73a; }   /* the bookmarked ayah */
+
+
+/* ---------- Bottom player ---------- */
+.player {
+  position: sticky; bottom: 0; z-index: 20; background: var(--surface);
+  border-top: 1px solid var(--line); padding: 0 12px calc(10px + var(--safe-b));
+}
+.progress { height: 3px; background: var(--line); margin: 0 -12px; overflow: hidden; }
+.progress > i { display: block; height: 100%; width: 0; background: var(--accent); }
+.pinfo { display: flex; align-items: center; gap: 6px; padding: 8px 0 4px; }
+.pmeta { flex: 1; min-width: 0; text-align: center; display: flex; flex-direction: column; gap: 1px; }
+.ref { font-weight: 600; color: var(--accent); font-size: 16px; }
+#pageLabel { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.note { font-size: 13px; color: var(--muted); }
+#audioNote { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.flat { width: 38px; height: 38px; border: 0; background: none; color: var(--muted); }
+.pctrl { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.pbtn {
+  flex: none; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  font: inherit; font-size: 11px; color: var(--muted); background: none; border: 0; padding: 4px 2px; min-width: 52px; cursor: pointer;
+}
+.pbtn svg { width: 24px; height: 24px; color: var(--ink); }
+.pbtn.on, .pbtn.on svg { color: var(--accent); }
+.play-main {
+  flex: none; width: 62px; height: 62px; border-radius: 50%; border: 0; cursor: pointer;
+  background: var(--accent); color: var(--surface); display: grid; place-items: center;
+  box-shadow: 0 6px 16px -8px var(--accent);
+}
+.play-main svg { width: 28px; height: 28px; }
+.play-main:active { transform: scale(.96); }
+.skip { width: 46px; height: 46px; border: 0; background: none; color: var(--ink); }
+.skip svg { width: 26px; height: 26px; }
+
+/* ---------- Bottom sheets (settings, tafsir) and the repeat dialog ---------- */
+.modal {
+  position: fixed; inset: 0; z-index: 50; background: rgba(10, 20, 18, .45);
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.dialog {
+  background: var(--surface); color: var(--ink); width: min(520px, 100%);
+  max-height: 88dvh; overflow: auto; border-radius: 18px 18px 0 0;
+  padding: 8px 18px calc(18px + var(--safe-b)); display: flex; flex-direction: column; gap: 14px;
+  box-shadow: 0 -10px 40px -20px rgba(0,0,0,.5); animation: up .2s ease-out;
+}
+@keyframes up { from { transform: translateY(40px); opacity: .4; } }
+.dialog::before { content: ""; align-self: center; width: 40px; height: 4px; border-radius: 2px; background: var(--line); flex: none; }
+.dialog-head { display: flex; align-items: center; justify-content: space-between; }
+.dialog-head h2 { margin: 0; font-family: var(--font-body); font-size: 20px; color: var(--accent); }
+.icon-btn { font: inherit; font-size: 18px; background: none; border: 0; color: var(--muted); cursor: pointer; padding: 6px 10px; border-radius: 8px; }
+.icon-btn:active { background: var(--accent-soft); }
+
+.field { display: flex; flex-direction: column; gap: 6px; font-size: 14px; color: var(--muted); }
+.field.inline { flex-direction: row; align-items: center; gap: 10px; color: var(--ink); font-size: 16px; }
+select, input[type=number] {
+  font: inherit; font-size: 16px; color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; width: 100%;
+}
+input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.ic { width: 1.15em; height: 1.15em; vertical-align: -0.22em; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; margin-inline-end: .4em; flex: none; }
+.btn {
+  font: inherit; font-size: 16px; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--line); border-radius: 10px; padding: 11px 18px; cursor: pointer;
+}
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.btn:disabled { opacity: .45; cursor: default; }
+
+.dialog fieldset { border: 1px solid var(--line); border-radius: 10px; margin: 0; padding: 8px 12px 12px; display: flex; flex-direction: column; gap: 10px; }
+.dialog legend { padding: 0 6px; font-weight: 600; color: var(--accent); font-size: 15px; }
+.range-row { display: grid; grid-template-columns: auto 1fr 90px; align-items: end; gap: 8px; }
+.range-tag { text-align: center; font-weight: 600; background: var(--accent-soft); color: var(--accent); border-radius: 8px; padding: 10px; }
+.dialog-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+.tafsir { font-family: var(--font-body); font-size: 18px; line-height: 2; display: flex; flex-direction: column; gap: 8px; }
+.tf { border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; cursor: pointer; }
+.tf.cur { background: var(--accent-soft); border-color: var(--accent); }
+.tn { color: var(--accent); font-family: var(--font-ui); font-size: 15px; margin-inline-end: 6px; white-space: nowrap; }
+.tf-surah { text-align: center; color: var(--accent); font-weight: 600; font-family: var(--font-ui); padding-block: 2px; }
+
+/* Tajweed color key (shown only for the color-coded mushaf) */
+.legend { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; font-size: 14px; line-height: 1.5; }
+.legend .lg-head { grid-column: 1 / -1; font-size: 13px; color: var(--muted); margin-top: 2px; }
+.legend span { display: flex; align-items: center; gap: 7px; }
+.legend i { width: 14px; height: 14px; border-radius: 50%; flex: none; box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); }
+.legend b { font-weight: 600; }
+.label { font-size: 13px; color: var(--muted); }
+
+/* voice search: mic inside the search box */
+.search input { padding-inline-end: 44px; }
+.vbtn { position: absolute; inset-inline-end: 4px; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; border-radius: 50%; border: 0; background: none; color: var(--muted); display: grid; place-items: center; cursor: pointer; padding: 0; }
+.vbtn svg { width: 20px; height: 20px; }
+.vbtn.on { background: var(--accent); color: #fff; animation: vpulse 1.2s infinite; }
+@keyframes vpulse { 50% { box-shadow: 0 0 0 6px var(--accent-soft); } }
+
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="app">
+<header class="top">
+  <div class="search" id="searchBox">
+    <input id="searchInput" type="search" placeholder="ابحث عن سورة أو آية…" autocomplete="off" enterkeyhint="search" aria-label="بحث" aria-controls="searchResults">
+    <button class="vbtn" id="voiceBtn" type="button" title="ابحث بالصوت" aria-label="ابحث بالصوت"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+    <div class="results" id="searchResults" hidden></div>
+  </div>
+  <button class="round" onclick="switchView('desktop', 'desktop.html')" title="نسخة الكمبيوتر" aria-label="نسخة الكمبيوتر">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="11" rx="1.5"/><path d="M2 19h20"/></svg>
+  </button>
+  <button class="round" id="bmBtn" title="الفاصل" aria-label="الفاصل">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10v18l-5-4-5 4z"/></svg>
+  </button>
+  <button class="round" id="settingsBtn" aria-label="الإعدادات">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
+  </button>
+</header>
+
+<main class="main">
+  <div class="spread" id="spread"></div>
+</main>
+
+<nav class="player" id="player">
+  <div class="progress"><i id="prog"></i></div>
+  <div class="pinfo">
+    <button class="round flat" id="prevPage" aria-label="الصفحة السابقة">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+    </button>
+    <div class="pmeta">
+      <span class="ref" id="ref">—</span>
+      <span id="pageLabel"></span>
+      <span class="note" id="audioNote" style="visibility:hidden">&nbsp;</span>
+    </div>
+    <button class="round flat" id="nextPage" aria-label="الصفحة التالية">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+    </button>
+  </div>
+  <div class="note" id="followNote" hidden style="text-align:center;padding:2px 0 6px"></div>
+  <div class="pctrl">
+    <button class="pbtn" id="followBtn" title="الموقع يسمعك ويتابع معك">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+      <span>تابعني</span>
+    </button>
+    <button class="pbtn" id="repeatBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l3 3-3 3"/><path d="M4 11V9a4 4 0 0 1 4-4h12"/><path d="M7 22l-3-3 3-3"/><path d="M20 13v2a4 4 0 0 1-4 4H4"/></svg>
+      <span>التكرار</span>
+    </button>
+    <button class="round skip" id="prevAyah" aria-label="الآية السابقة">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6l9 6-9 6z"/><rect x="16" y="6" width="2.4" height="12" rx="1"/></svg>
+    </button>
+    <button class="play-main" id="playBtn" aria-label="تشغيل"></button>
+    <button class="round skip" id="nextAyah" aria-label="الآية التالية">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 6l-9 6 9 6z"/><rect x="5.6" y="6" width="2.4" height="12" rx="1"/></svg>
+    </button>
+    <button class="pbtn" id="tafsirBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6c-2-1.5-5-2-8-1.5v13c3-.5 6 0 8 1.5 2-1.5 5-2 8-1.5v-13c-3-.5-6 0-8 1.5z"/><path d="M12 6v13"/></svg>
+      <span>التفسير</span>
+    </button>
+  </div>
+</nav>
+</div>
+
+<!-- Follow-me notice: shown before the first use, until "don't remind me" is ticked -->
+<div class="modal" id="followModal" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="followTitle">
+    <div class="dialog-head">
+      <h2 id="followTitle"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>تابعني · نسخة تجريبية</h2>
+      <button class="icon-btn" id="followCancelX" aria-label="إغلاق">✕</button>
+    </div>
+    <div style="line-height:1.9">
+      اقرأ بصوتك، والموقع يسمعك ويتابع معك آية آية.<br>
+      هذه الميزة <b>تجريبية</b>، وقد تتأخر أو تخطئ أحيانًا، خصوصًا مع المد الطويل أو الضوضاء.
+      <div class="note" style="margin-top:6px;line-height:1.9">• تحتاج إذن المايك والاتصال بالإنترنت<br>• تعمل بشكل أفضل في Chrome<br>• اقرأ مرتّلًا وبوضوح</div>
+    </div>
+    <label style="display:flex;flex-direction:row;align-items:center;gap:10px;font-size:15px;cursor:pointer"><input type="checkbox" id="followNoRemind" style="width:20px;height:20px;margin:0"> لا تذكّرني مرة أخرى</label>
+    <button class="btn primary" id="followGo">ابدأ</button>
+    <button class="btn" id="followCancel">إلغاء</button>
+  </div>
+</div>
+
+<!-- Bookmark sheet -->
+<div class="modal" id="bmModal" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="bmTitle">
+    <div class="dialog-head">
+      <h2 id="bmTitle">الفاصل</h2>
+      <button class="icon-btn" data-close aria-label="إغلاق">✕</button>
+    </div>
+    <button class="btn primary" id="bmSave"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10a1 1 0 0 1 1 1v17l-6-4-6 4V4a1 1 0 0 1 1-1z"/></svg>حفظ الفاصل عند الآية الحالية</button>
+    <div class="note" id="bmGoLabel"></div>
+    <button class="btn" id="bmGo"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14l-4-4 4-4"/><path d="M5 10h9a5 5 0 0 1 0 10h-3"/></svg>الذهاب إلى الفاصل</button>
+  </div>
+</div>
+
+<!-- Settings sheet -->
+<div class="modal" id="settingsModal" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="dialog-head">
+      <h2 id="settingsTitle">الإعدادات</h2>
+      <button class="icon-btn" data-close aria-label="إغلاق">✕</button>
+    </div>
+    <label class="field">المصحف <select id="mushafSel"></select></label>
+    <label class="field">القارئ <select id="reciterSel"></select></label>
+    <label class="field">السورة <select id="surahSel"></select></label>
+    <div class="grid2">
+      <label class="field">الجزء <select id="juzSel"></select></label>
+      <label class="field">الصفحة <input id="pageInput" type="number" inputmode="numeric" min="1" max="604"></label>
+    </div>
+    <label class="field inline"><input type="checkbox" id="autoNext" checked> متابعة التلاوة للآية التالية</label>
+    <button type="button" class="btn" id="dlOpen"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg>الاستماع دون اتصال بالإنترنت</button>
+    <section id="tajweedKey" hidden>
+      <div class="label" style="margin-bottom:6px">ألوان التجويد</div>
+      <div class="legend">
+        <div class="lg-head">المدود</div>
+        <span><i style="background:#a83c30"></i><span>مد لازم <b>٦ حركات</b></span></span>
+        <span><i style="background:#e8392c"></i><span>مد واجب <b>٤ أو ٥</b></span></span>
+        <span><i style="background:#ef8838"></i><span>مد جائز <b>٢ أو ٤ أو ٦</b></span></span>
+        <span><i style="background:#c8953f"></i><span>مد طبيعي <b>حركتان</b></span></span>
+        <div class="lg-head">أحكام أخرى</div>
+        <span><i style="background:#4a8a52"></i><span>إخفاء وغنّة <b>حركتان</b></span></span>
+        <span><i style="background:#9d9781"></i><span>إدغام، وما لا يُلفظ</span></span>
+        <span><i style="background:#3d6582"></i><span>تفخيم الراء</span></span>
+        <span><i style="background:#4a92d0"></i><span>قلقلة</span></span>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- Tafsir sheet -->
+<div class="modal" id="tafsirModal" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="tafsirTitle">
+    <div class="dialog-head">
+      <h2 id="tafsirTitle">التفسير الميسّر</h2>
+      <button class="icon-btn" data-close aria-label="إغلاق">✕</button>
+    </div>
+    <div class="tafsir" id="tafsir"></div>
+  </div>
+</div>
+
+<div class="modal" id="repeatModal" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="repeatTitle">
+    <div class="dialog-head">
+      <h2 id="repeatTitle">إعدادات التكرار</h2>
+      <button class="icon-btn" id="repeatClose" aria-label="إغلاق">✕</button>
+    </div>
+    <fieldset>
+      <legend>حدود التكرار</legend>
+      <div class="range-row">
+        <span class="range-tag">من</span>
+        <label class="field">السورة <select id="repFromS"></select></label>
+        <label class="field">الآية <select id="repFromA"></select></label>
+      </div>
+      <div class="range-row">
+        <span class="range-tag">إلى</span>
+        <label class="field">السورة <select id="repToS"></select></label>
+        <label class="field">الآية <select id="repToA"></select></label>
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>التكرار لكل آية</legend>
+      <select id="repAyah">
+        <option value="1">بدون تكرار</option><option value="2">مرتين</option><option value="3">٣ مرات</option>
+        <option value="4">٤ مرات</option><option value="5">٥ مرات</option><option value="7">٧ مرات</option>
+        <option value="10">١٠ مرات</option><option value="20">٢٠ مرة</option><option value="0">بلا توقف</option>
+      </select>
+    </fieldset>
+    <fieldset>
+      <legend>الانتظار بين التلاوات</legend>
+      <select id="repWait">
+        <option value="0">بدون انتظار</option><option value="2">ثانيتين</option><option value="5">٥ ثواني</option>
+        <option value="10">١٠ ثواني</option><option value="-1">بقدر مدة الآية</option><option value="-2">ضعف مدة الآية</option>
+      </select>
+    </fieldset>
+    <fieldset>
+      <legend>تكرار الفقرة</legend>
+      <select id="repPass">
+        <option value="1">بدون تكرار</option><option value="2">مرتين</option><option value="3">٣ مرات</option>
+        <option value="5">٥ مرات</option><option value="10">١٠ مرات</option><option value="0">بلا توقف</option>
+      </select>
+    </fieldset>
+    <div class="dialog-actions">
+      <button class="btn primary" id="repStart">بدء</button>
+      <button class="btn" id="repStop" disabled>إيقاف التكرار</button>
+    </div>
+  </div>
+</div>
+
+<audio id="audio" preload="auto"></audio>
+<audio id="preload" preload="auto"></audio>
+
+<script src="data.js"></script>
+<script>
+const RECITERS = [
+  ["Minshawy_Murattal_128kbps", "محمد صديق المنشاوي (مرتل)"],
+  ["Minshawy_Mujawwad_64kbps", "محمد صديق المنشاوي (مجوّد)"],
+  ["Husary_64kbps", "محمود خليل الحصري (مرتل)"],
+  ["Husary_Mujawwad_64kbps", "محمود خليل الحصري (مجوّد)"],
+  ["Abdul_Basit_Murattal_64kbps", "عبد الباسط عبد الصمد (مرتل)"],
+  ["Abdul_Basit_Mujawwad_128kbps", "عبد الباسط عبد الصمد (مجوّد)"],
+  ["Alafasy_64kbps", "مشاري راشد العفاسي"],
+  ["Abdurrahmaan_As-Sudais_64kbps", "عبد الرحمن السديس"],
+  ["Saood_ash-Shuraym_64kbps", "سعود الشريم"],
+  ["Maher_AlMuaiqly_64kbps", "ماهر المعيقلي"],
+  ["Ghamadi_40kbps", "سعد الغامدي"],
+  ["Yasser_Ad-Dussary_128kbps", "ياسر الدوسري"],
+  ["Hudhaify_64kbps", "علي الحذيفي"],
+  ["Nasser_Alqatami_128kbps", "ناصر القطامي"],
+  ["Abu_Bakr_Ash-Shaatree_64kbps", "أبو بكر الشاطري"],
+  ["Ahmed_ibn_Ali_al-Ajamy_128kbps_ketaballah.net", "أحمد بن علي العجمي"],
+  ["Abdullah_Basfar_64kbps", "عبد الله بصفر"],
+  ["Muhammad_Ayyoub_64kbps", "محمد أيوب"],
+  ["Muhammad_Jibreel_64kbps", "محمد جبريل"],
+  ["Abdullaah_3awwaad_Al-Juhaynee_128kbps", "عبد الله عواد الجهني"],
+  ["Hani_Rifai_192kbps", "هاني الرفاعي"],
+  ["Muhsin_Al_Qasim_192kbps", "محسن القاسم"],
+  ["Mohammad_al_Tablaway_64kbps", "محمد محمود الطبلاوي"],
+  ["Fares_Abbad_64kbps", "فارس عباد"],
+  ["Ali_Jaber_64kbps", "علي جابر"],
+  ["luhaidan", "محمد اللحيدان"],
+];
+// still being tried out: only in the owner's browser for now
+const AUDIO_BASE = "https:\/\/everyayah.com/data/";
+const ar = n => String(n).replace(/\d/g, d => "٠١٢٣٤٥٦٧٨٩"[d]);
+const $ = id => document.getElementById(id);
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+};
+
+const RECITERS_WARSH = [
+  ["warsh/warsh_ibrahim_aldosary_128kbps", "إبراهيم الدوسري (ورش)"],
+  ["warsh/warsh_yassin_al_jazaery_64kbps", "ياسين الجزائري (ورش)"],
+];
+
+/* ---------- Mushafs: page scans, their grid size and highlight layout ---------- */
+const BODY_A = { h: 30, mg: 40, tw: 416, ow: 10, oh: 15, fs: 117, top: 44, stop: 80 };
+const BODY_B = { h: 40, mg: 25, tw: 427, ow: 17, oh: 20, fs: 140, top: 30, stop: 80 };
+// All page geometry is in "units": the page image is 456 units wide and H units tall.
+// PDF mushafs share the Madinah layout, so hafs coordinates are mapped onto them by a scale +
+// offset [sx, bx, sy, by] measured for every page (MUSHAF_T in the data file), because the
+// text block sits at a different place on different PDF pages. The decorated opening pages
+// (1–2) have their own hand-fitted mapping.
+// crop: [x0, x1, y0, y1] trims the white margin on the binding side so facing pages sit together;
+// it follows the page's own text block, keeping room for the frame around it.
+const HAFS_TEXT = [49, 406];   // left/right edge of the text block on the hafs scans
+const FRAME_ROOM = 32;         // frame width beyond the text block, in units
+const OUTER_ROOM = 56;         // room beside the frame for the marks in the margin (hizb, sajda), in units
+const pdfMushaf = (key, name, pageH, open, inner, top, bottom) => ({
+  name, ext: "jpg", coords: "hafs", warsh: false,
+  H: p => 456 * pageH(p) / 562,
+  T: p => p <= 2 ? open[p - 1] : MUSHAF_T[key][p - 1],
+  crop: (p, H) => {
+    if (p === 1) return [inner[0], 456, 0, H];
+    if (p === 2) return [0, inner[1], 0, H];
+    // the frame always in the same place: the same room around it on every page (white where the
+    // scan has less), so pages do not jump left/right or grow/shrink when turned. Facing pages on the
+    // computer sit close together on the binding side.
+    const f = window.MUSHAF_FRAME && MUSHAF_FRAME[key] && MUSHAF_FRAME[key][p - 1];
+    if (!f) {
+      const [sx, bx] = MUSHAF_T[key][p - 1];
+      return p % 2
+        ? [Math.max(0, sx * HAFS_TEXT[0] + bx - FRAME_ROOM), 456, top(p), bottom(p)]
+        : [0, Math.min(456, sx * HAFS_TEXT[1] + bx + FRAME_ROOM), top(p), bottom(p)];
+    }
+    // no room on the binding side, where there are no marks (like a printed mushaf): the page is larger
+    const out = OUTER_ROOM, inn = 4;
+    const [l, r] = [f[0] * 456, f[1] * 456];
+    return [l - (p % 2 ? inn : out), r + (p % 2 ? out : inn), f[2] * H - 0.045 * H, f[3] * H + 0.032 * H];
+  },
+});
+const MUSHAFS = {
+  hafs:      { name: "حفص عن عاصم (مصحف المدينة)", ext: "png", H: () => 672, M: BODY_A, F: { h: 20, mg: 80, tw: 376, ow: 5, oh: 10 }, warsh: false },
+  standard1: pdfMushaf("standard1", "مصحف المدينة · إطار أخضر", p => p <= 61 ? 882 : 804,
+               [[0.97, -39, 0.96, -4], [0.97, 51, 0.96, -3]], [25, 408], p => p <= 61 ? 44 : 12, p => p <= 61 ? 662 : 630),
+  standard2: pdfMushaf("standard2", "مصحف المدينة · إطار أزرق", () => 804,
+               [[0.97, -39, 0.99, -47], [0.97, 51, 0.99, -42]], [22, 414], () => 6, () => 615),
+  big:       pdfMushaf("big", "مصحف المدينة · خط كبير", () => 806,
+               [[0.8, 43, 0.8, 26], [0.8, 41, 0.8, 24]], [24, 433], () => 38, () => 616),
+  tajweed:   { name: "مصحف التجويد الملوّن", ext: "png", H: () => 707, M: BODY_B, F: { h: 30, mg: 100, tw: 350, ow: 10, oh: 15 }, warsh: false },
+  warsh:     { name: "ورش عن نافع",         ext: "png", H: () => 739, M: BODY_B, F: { h: 20, mg: 80, tw: 376, ow: 5, oh: 10 }, warsh: true },
+};
+const coordsOf = m => MUSHAFS[m].coords || m;
+// Visible part of page p, in units: { H, crop: [x0, x1, y0, y1] }
+function frameOf(p) {
+  const mz = MZ(), H = mz.H(p);
+  return { H, crop: mz.crop ? mz.crop(p, H) : [0, 456, 0, H] };
+}
+const OPEN_CIRCLE = { cx: 228, cy: 381, r: 108 };   // text circle of Al-Fatiha / opening of Al-Baqarah, in hafs units
+
+/* ---------- Index ---------- */
+// AY[i] = { s, a } in mushaf order (the same order in all three mushafs)
+const AY = [], surahFirst = [];
+MUSHAF_PAGES.hafs.forEach(list => list.forEach(([k]) => {
+  const [s, a] = k.split("_").map(Number);
+  if (a === 1) surahFirst[s] = AY.length;
+  AY.push({ s, a });
+}));
+// Per mushaf: page of each ayah, first ayah of each page, first page of each juz
+const IDX = {};
+for (const m in MUSHAF_PAGES) {
+  const pageOf = [], first = [], juzFirst = [];
+  let i = 0;
+  MUSHAF_PAGES[m].forEach((list, pi) => {
+    first[pi] = i;
+    list.forEach(() => {
+      pageOf[i] = pi + 1;
+      if (!juzFirst[JUZ[i]]) juzFirst[JUZ[i]] = pi + 1;
+      i++;
+    });
+  });
+  IDX[m] = { pageOf, first, juzFirst };
+}
+const idxOf = (s, a) => (surahFirst[s] !== undefined && a >= 1 && a <= SURAHS[s - 1][1]) ? surahFirst[s] + a - 1 : -1;
+
+let mushaf = MUSHAFS[store.get("mushaf")] ? store.get("mushaf") : "hafs";
+const MZ = () => MUSHAFS[mushaf];
+const X = () => IDX[coordsOf(mushaf)];
+
+/* ---------- Highlight geometry (ayah-end points → line boxes) ---------- */
+// Returns, per ayah on the page, boxes in page units: [top, left, width, height]
+function rectsFor(page) {
+  const mz = MZ(), cm = coordsOf(mushaf);
+  let raw = rectsRaw(MUSHAFS[cm], MUSHAF_PAGES[cm][page - 1], page);
+  if (page <= 2 && cm === "hafs") raw = clampToCircle(raw);
+  if (!mz.T) return raw;
+  const [sx, bx, sy, by] = mz.T(page);
+  return raw.map(rs => rs.map(([y, x, w, h]) => [sy * y + by, sx * x + bx, sx * w, sy * h]));
+}
+// Keep opening-page boxes inside the round text frame
+function clampToCircle(raw) {
+  const { cx, cy, r } = OPEN_CIRCLE;
+  return raw.map(rs => rs.map(([t, l, w, h]) => {
+    const dy = t + h / 2 - cy, hw = Math.sqrt(Math.max(0, r * r - dy * dy));
+    const L = Math.max(l, cx - hw), R = Math.min(l + w, cx + hw);
+    return [t, L, R - L, h];
+  }));
+}
+function rectsRaw(mz, list, page) {
+  const M = page <= 2 ? { ...mz.M, ...mz.F } : mz.M;
+  const out = [];
+  let pt = null, pl = null;
+  list.forEach(([k, x, y], n) => {
+    const a = +k.split("_")[1];
+    const top = y - M.oh, left = x - M.ow, r = [];
+    // on the opening pages the first ayah starts on its own line (the basmala line of Al-Baqarah is not an ayah)
+    if (n === 0) { pl = M.tw; pt = page <= 2 ? top : (a === 1 ? M.stop : M.top); }
+    else if (a === 1) { pt += M.fs; pl = M.tw; }
+    const diff = top - pt;
+    if (diff > M.h * 1.6) {
+      r.push([pt, M.mg, pl - M.mg, M.h], [top, left, M.tw - left, M.h], [pt + M.h, M.mg, M.tw - M.mg, diff - M.h]);
+    } else if (diff > M.h * 0.6) {
+      r.push([pt, M.mg, pl - M.mg, M.h], [top, left, M.tw - left, M.h]);
+    } else {
+      r.push([top, left, pl - left, M.h]);
+    }
+    out.push(r);
+    pt = top; pl = left;
+  });
+  return out;
+}
+
+/* ---------- Page images: local folder, or Google Drive when running in Apps Script ---------- */
+const inAppsScript = !!(window.google && google.script && google.script.run);
+const imgCache = {};
+function pageSrc(m, p) {
+  if (!inAppsScript) return Promise.resolve(`pages/${m}/${p}.${MUSHAFS[m].ext}`);
+  const k = m + "/" + p;
+  if (!imgCache[k]) {
+    imgCache[k] = new Promise((ok, fail) =>
+      google.script.run.withSuccessHandler(ok).withFailureHandler(e => { delete imgCache[k]; fail(e); }).getPage(m, p));
+  }
+  return imgCache[k];
+}
+
+/* ---------- Rendering ---------- */
+// paused: stopped mid-ayah by the user; pressing play carries on from the same spot
+let page = 1, cur = -1, playing = false, paused = false, playIdx = -1;
+const twoUp = () => false;   // phone layout: always one page
+let zoomOn = false;   // zoom mode is only in the computer layout
+const ZOOM = 1.7;
+const zoomBox = () => document.querySelector(".main");
+
+const ratioOf = p => { const [x0, x1, y0, y1] = frameOf(p).crop; return (x1 - x0) / (y1 - y0); };
+// The page fills the screen width, and shrinks only if it would not fit between the top bar and the player
+function sizePages() {
+  const ratio = ratioOf(page);
+  const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  const chrome = $("searchBox").parentNode.offsetHeight + $("player").offsetHeight + 16;
+  const availH = Math.max(300, vh - chrome);
+  const availW = Math.min(window.innerWidth, 520) - 12;
+  document.documentElement.style.setProperty("--zh", Math.floor(availH) + "px");
+  document.documentElement.style.setProperty("--ph", Math.floor(zoomOn ? availW * ZOOM / ratio : Math.min(availH, availW / ratio)) + "px");
+}
+
+function pageEl(p) {
+  const div = document.createElement("div");
+  div.className = "page";
+  const [x0, x1, y0, y1] = frameOf(p).crop, cw = x1 - x0, ch = y1 - y0;
+  div.style.aspectRatio = cw + " / " + ch;
+  const img = document.createElement("img");
+  img.alt = "صفحة " + ar(p);
+  img.style.cssText = `width:${456 / cw * 100}%;left:${-x0 / cw * 100}%;top:${-y0 / ch * 100}%`;
+  div.appendChild(img);
+  const m = mushaf;
+  pageSrc(m, p).then(src => { if (m === mushaf) img.src = src; })
+    .catch(() => { div.insertAdjacentHTML("beforeend", '<div class="note" style="position:absolute;inset:40% 10% auto;text-align:center">تعذّر تحميل الصفحة. تأكد من مجلد الصفحات في قوقل درايف.</div>'); });
+  const first = X().first[p - 1];
+  rectsFor(p).forEach((rs, n) => rs.forEach(([t, l, w, h]) => {
+    if (w <= 0 || h <= 0) return;
+    const d = document.createElement("div");
+    d.className = "hl"; d.dataset.i = first + n;
+    d.style.cssText = `top:${(t - y0) / ch * 100}%;left:${(l - x0) / cw * 100}%;width:${w / cw * 100}%;height:${h / ch * 100}%`;
+    div.appendChild(d);
+  }));
+  return div;
+}
+
+function shownPages() {
+  if (!twoUp()) return [page];
+  const r = page % 2 ? page : page - 1;   // odd pages sit on the right
+  return r < 604 ? [r, r + 1] : [r];
+}
+
+function render(p) {
+  page = Math.min(604, Math.max(1, p));
+  sizePages();
+  const sp = $("spread"), ps = shownPages();
+  sp.innerHTML = "";
+  ps.forEach(q => sp.appendChild(pageEl(q)));
+  const fi = X().first[page - 1];
+  $("pageLabel").textContent = "صفحة " + ar(page) + " · الجزء " + ar(JUZ[fi]);
+  $("pageInput").value = page;
+  $("surahSel").value = AY[fi].s;
+  $("juzSel").value = JUZ[fi];
+  paint();
+  renderTafsir();
+  // warm the next pages so turning is instant
+  const nx = ps[ps.length - 1] + 1;
+  [nx, nx + 1].filter(q => q <= 604).forEach(q => pageSrc(mushaf, q).then(src => { new Image().src = src; }).catch(() => {}));
+}
+
+/* ---------- Tafsir list for the pages on screen ---------- */
+// Online source is keyed by Madinah (hafs) pages, so fetch those pages and map back by ayah index
+const tafsirByHafsPage = {};
+function hafsPageTafsir(hp) {
+  if (!tafsirByHafsPage[hp]) {
+    tafsirByHafsPage[hp] = fetch("https:\/\/api.alquran.cloud/v1/page/" + hp + "/ar.muyassar")
+      .then(r => r.json()).then(j => j.data.ayahs.map(a => a.text))
+      .catch(e => { delete tafsirByHafsPage[hp]; throw e; });
+  }
+  return tafsirByHafsPage[hp];
+}
+function tafsirFor(indices) {
+  if (window.TAFSIR) return Promise.resolve(indices.map(i => TAFSIR[i]));
+  const hp = [...new Set(indices.map(i => IDX.hafs.pageOf[i]))];
+  return Promise.all(hp.map(hafsPageTafsir)).then(lists => {
+    const map = {};
+    hp.forEach((q, k) => lists[k].forEach((t, n) => { map[IDX.hafs.first[q - 1] + n] = t; }));
+    return indices.map(i => map[i]);
+  });
+}
+let tafsirToken = 0;
+function renderTafsir() {
+  const token = ++tafsirToken, box = $("tafsir");
+  const indices = [];
+  shownPages().forEach(p => {
+    const f = X().first[p - 1], n = MUSHAF_PAGES[coordsOf(mushaf)][p - 1].length;
+    for (let k = 0; k < n; k++) indices.push(f + k);
+  });
+  box.innerHTML = '<div class="note">جارٍ تحميل التفسير…</div>';
+  tafsirFor(indices).then(texts => {
+    if (token !== tafsirToken) return;
+    box.innerHTML = indices.map((i, k) => {
+      const o = AY[i];
+      return (o.a === 1 ? `<div class="tf-surah">سورة ${SURAHS[o.s - 1][0]}</div>` : "") +
+        `<div class="tf" data-i="${i}"><span class="tn">( ${ar(o.a)} )</span>${texts[k]}</div>`;
+    }).join("");
+    markTafsir(true);
+  }).catch(() => {
+    if (token === tafsirToken) box.innerHTML = '<div class="note">تعذّر تحميل التفسير. تأكد من اتصال الإنترنت.</div>';
+  });
+}
+function markTafsir(scroll) {
+  const box = $("tafsir");
+  box.querySelectorAll(".tf").forEach(d => d.classList.toggle("cur", +d.dataset.i === cur));
+  const el = box.querySelector(".tf.cur");
+  if (el && scroll && !$("tafsirModal").hidden) el.scrollIntoView({ block: "center" });
+}
+$("tafsir").addEventListener("click", e => {
+  const d = e.target.closest(".tf"); if (!d) return;
+  const i = +d.dataset.i;
+  playing ? playAyah(i) : select(i);
+});
+
+function paint() {
+  const bm = bmIdx();
+  document.querySelectorAll(".hl").forEach(d => {
+    const i = +d.dataset.i;
+    const active = (playing || paused) && i === playIdx;
+    d.classList.toggle("sel", i === cur && !active);
+    d.classList.toggle("play", active);
+    d.classList.toggle("bm", i === bm);
+  });
+  requestAnimationFrame(() => follow(true));
+}
+
+const onPage = i => shownPages().includes(X().pageOf[i]);
+
+function select(i) {
+  if (i < 0 || i >= AY.length) return;
+  cur = i;
+  if (!onPage(i)) render(X().pageOf[i]); else paint();
+  const o = AY[i];
+  $("ref").textContent = "سورة " + SURAHS[o.s - 1][0] + " · الآية " + ar(o.a);
+  setMediaInfo();
+  markTafsir(true);
+  store.set("last", o.s + "_" + o.a);
+  try { history.replaceState(null, "", "#aya=" + o.s + "_" + o.a); } catch (e) {}
+}
+
+/* ---------- Audio ---------- */
+const audio = $("audio"), pre = $("preload");
+
+// Recitations downloaded for listening without internet (offline.js) are played from the cache as blob URLs
+const OFF = { have: new Set(), blobs: new Map() };
+function offSrc(url) {
+  if (OFF.blobs.has(url)) return Promise.resolve(OFF.blobs.get(url));
+  return caches.open("recitations-v1").then(c => c.match(url)).then(r => r ? r.blob() : null).then(b => {
+    if (!b) { OFF.have.delete(url); return url; }
+    const u = URL.createObjectURL(b); OFF.blobs.set(url, u);
+    if (OFF.blobs.size > 40) { const [k, v] = OFF.blobs.entries().next().value; URL.revokeObjectURL(v); OFF.blobs.delete(k); }
+    return u;
+  }).catch(() => url);
+}
+let playTok = 0;
+function playSrc(url) {
+  const t = ++playTok;
+  if (!OFF.have.has(url)) { audio.src = url; audio.play().catch(() => {}); return; }
+  offSrc(url).then(u => { if (t !== playTok) return; audio.src = u; audio.play().catch(() => {}); });
+}
+let inBasmala = false, waitTimer = 0, pendingWait = null;   // pendingWait: step still due when paused during a wait
+const ICON_PLAY = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>';
+const ICON_PAUSE = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6.5" y="5" width="3.6" height="14" rx="1"/><rect x="13.9" y="5" width="3.6" height="14" rx="1"/></svg>';
+function setPlayBtn() {
+  $("playBtn").innerHTML = playing ? ICON_PAUSE : ICON_PLAY;
+  $("playBtn").setAttribute("aria-label", playing ? "إيقاف مؤقت" : paused ? "متابعة" : "تشغيل");
+  if ("mediaSession" in navigator) navigator.mediaSession.playbackState = playing ? "playing" : paused ? "paused" : "none";
+}
+// Repeat session started from the repeat dialog; null while playing normally.
+// Counts are totals (1 = play once); Infinity means "until stopped".
+let session = null;   // { from, to, ayahTimes, wait, passTimes, ayahLeft, passLeft }
+const reciters = () => MZ().warsh ? RECITERS_WARSH : RECITERS;
+const rec = () => $("reciterSel").value;
+const pad = n => String(n).padStart(3, "0");
+const urlFor = (s, a) => AUDIO_BASE + rec() + "/" + pad(s) + pad(a) + ".mp3";
+const needsBasmala = o => o.a === 1 && o.s !== 1 && o.s !== 9;
+// Reciters recorded a whole surah per file (not ayah by ayah): each ayah plays as a stretch of the
+// surah's file, from the ayah start times worked out from the recording (audio/<id>.json).
+// These are prayer recordings: the basmala is silent there, so it plays from its own short file.
+// A surah's list may carry one more time than it has ayahs: where its last ayah ends (al-Fatiha: before «آمين»).
+// pre: the surah file opens with the reciter's own basmala (and sometimes the isti'adha) before its first
+// ayah; where it does not, the basmala plays from its own short file. split: a surah too big for one file
+// goes on in a second file from that ayah ([ayah, file name, where that file starts in the surah]).
+const SURAH_FILES = {
+  luhaidan: { base: "https://nawafz2011-blip.github.io/luhaidan/", basmala: "audio/luhaidan-basmala.mp3", times: null },
+  "Yasser_Ad-Dussary_128kbps": { json: "yasser", v: 4, pre: true, dl: true, basmala: "audio/yasser-basmala.mp3", times: null,
+    base: s => "https://nawafz2011-blip.github.io/yasser-dosari-" + (s <= 19 ? 1 : 2) + "/",
+    split: { 2: [142, "002b", 3024.6] } },
+  // still being tried out: only in the owner's browser for now
+  ...(window.OWNER ? { "Fares_Abbad_64kbps": { json: "fares", v: 1, pre: true, basmala: "audio/fares-basmala.mp3", times: null,
+    base: s => "https://nawafz2011-blip.github.io/fares-abbad-" + (s <= 19 ? 1 : 2) + "/",
+    split: { 2: [142, "002b", 2840.0] } } } : {}),
+};
+// the file an ayah is in, and where that file starts in the surah's timing
+const segFile = (g, s, a) => {
+  const base = typeof g.base === "function" ? g.base(s) : g.base, p = g.split && g.split[s];
+  return p && a >= p[0] ? [base + p[1] + ".mp3", p[2]] : [base + pad(s) + ".mp3", 0];
+};
+// every file a surah needs (to save it for listening without internet)
+const segFiles = (g, s) => [segFile(g, s, 1)[0]].concat(g.split && g.split[s] ? [segFile(g, s, g.split[s][0])[0]] : []);
+// the file plays from the saved copy when there is one
+let segTok = 0;
+function segLoad(src, t) {
+  const k = ++segTok;
+  if (!OFF.have.has(src)) { audio.src = src + "#t=" + t; audio.play().catch(() => {}); return; }
+  offSrc(src).then(u => { if (k !== segTok) return; audio.src = u + "#t=" + t; audio.play().catch(() => {}); });
+}
+// a surah listed in "ayahs" plays ayah by ayah from the reciter's everyayah files instead
+const segRec = () => { const g = SURAH_FILES[rec()], o = AY[playIdx]; return g && !(g.ayahs && o && g.ayahs.includes(o.s)) ? g : null; };
+let segSrc = "", segStart = 0, segEnd = null, segPausedAt = 0;
+const SEG_LEAD = 0.3;   // seconds the highlight moves ahead of the ayah's end when reading on
+// the ayah timing file; "v" changes whenever the timing is corrected, so no browser keeps an old copy
+const segJson = id => new URL("audio/" + (SURAH_FILES[id].json || id) + ".json" + (SURAH_FILES[id].v ? "?v=" + SURAH_FILES[id].v : ""), location.href).href;
+const loadSeg = id => { const u = segJson(id);
+  return fetch(u).catch(() => caches.match(u).then(r => r || Promise.reject())).then(r => r.json()).then(t => { SURAH_FILES[id].times = t; }); };
+const ayahLen = () => segRec() ? (segEnd ?? audio.duration ?? 0) - segStart : (audio.duration || 0);
+
+const refText = i => SURAHS[AY[i].s - 1][0] + " " + ar(AY[i].a);
+const times = n => n === Infinity ? "بلا توقف" : ar(n);
+
+function updateNote(waiting) {
+  let t = "القارئ: " + $("reciterSel").selectedOptions[0].text;
+  if (session) {
+    const s = session;
+    t += "\nتكرار من " + refText(s.from) + " إلى " + refText(s.to);
+    if (s.ayahTimes > 1) t += " · الآية: " + (s.ayahTimes === Infinity ? "بلا توقف" : ar(s.ayahTimes - s.ayahLeft) + " من " + ar(s.ayahTimes));
+    if (s.passTimes > 1) t += " · الفقرة: " + (s.passTimes === Infinity ? "بلا توقف" : ar(s.passTimes - s.passLeft) + " من " + ar(s.passTimes));
+    if (waiting) t += "\nانتظار…";
+  }
+  if (paused) t = "متوقف مؤقتًا · " + t;
+  $("audioNote").textContent = t;
+  // keep the line's space so the page does not jump when recitation starts
+  $("audioNote").style.visibility = (playing || paused || session) ? "visible" : "hidden";
+}
+
+function playAyah(i, fresh = true) {
+  if (i < 0 || i >= AY.length) { stop(); return; }
+  clearTimeout(waitTimer); pendingWait = null; paused = false;
+  if (session && (i < session.from || i > session.to)) endSession();   // jumped outside the range
+  playIdx = i; playing = true;
+  if (fresh && session) session.ayahLeft = session.ayahTimes - 1;
+  select(i);
+  const o = AY[i], g = segRec();
+  if (g) {
+    if (!g.times) { loadSeg(rec()).then(() => { if (playing && playIdx === i) playAyah(i, fresh); }, () => stop()); setPlayBtn(); return; }
+    const T = g.times[o.s]; if (!T) { stop(); return; }
+    if (g.pre && needsBasmala(o) && fresh && T[0] > 2) {
+      // the surah's own opening, up to its first ayah
+      inBasmala = true; segStart = 0; segEnd = T[0];
+      const src = segFile(g, o.s, 1)[0];
+      if (segSrc !== src) { segSrc = src; segLoad(src, 0); } else { audio.currentTime = 0; audio.play().catch(() => {}); }
+      setPlayBtn(); updateNote(); paint();
+      return;
+    }
+    if ((o.s === 1 && o.a === 1 && !g.pre) || (needsBasmala(o) && fresh)) {
+      inBasmala = o.s !== 1;            // in al-Fatiha the basmala is the ayah itself
+      segSrc = g.basmala; segStart = 0; segEnd = null; segLoad(g.basmala, 0);
+      setPlayBtn(); updateNote(); paint();
+      return;
+    }
+    inBasmala = false;
+    const [src, off] = segFile(g, o.s, o.a);
+    segStart = T[o.a - 1] - off; segEnd = o.a < T.length ? T[o.a] - off : null;
+    if (g.split && g.split[o.s] && o.a + 1 === g.split[o.s][0]) segEnd = null;   // the first file ends with this ayah
+    // carrying straight on into the next ayah of the same file: no seek, so there is no gap
+    if (segSrc !== src) { segSrc = src; segLoad(src, segStart); return setPlayBtn(), updateNote(), paint(); }
+    else if (audio.currentTime < segStart - SEG_LEAD - 0.3 || audio.currentTime > segStart + 0.6) audio.currentTime = segStart;
+    audio.play().catch(() => {});
+    setPlayBtn(); updateNote(); paint();
+    return;
+  }
+  segSrc = ""; segEnd = null;
+  inBasmala = needsBasmala(o) && fresh;
+  playSrc(inBasmala ? urlFor(1, 1) : urlFor(o.s, o.a));
+  if (i + 1 < AY.length) { const n = AY[i + 1], nu = urlFor(n.s, n.a); if (OFF.have.has(nu)) offSrc(nu); else pre.src = nu; }
+  setPlayBtn();
+  updateNote();
+  paint();
+}
+
+function endSession() {
+  session = null;
+  $("repStop").disabled = true;
+  $("repeatBtn").classList.remove("on");
+}
+
+function stop() {
+  clearTimeout(waitTimer); pendingWait = null;
+  endSession();
+  playing = false; paused = false; audio.pause();
+  setPlayBtn();
+  $("prog").style.width = "0";
+  updateNote();
+  paint();
+}
+
+// Pause keeps the ayah, its position and any repeat session, so play continues from the same spot
+function pause() {
+  if (!playing) return;
+  playing = false; paused = true;
+  clearTimeout(waitTimer);
+  audio.pause();
+  setPlayBtn(); updateNote(); paint();
+}
+function resume() {
+  if (!paused) return;
+  playing = true; paused = false;
+  setPlayBtn(); updateNote(); paint();
+  if (pendingWait) { const fn = pendingWait; pendingWait = null; fn(); }
+  else audio.play().catch(() => {});
+}
+
+// Waits between recitations as set in the dialog: fixed seconds, or a multiple of the ayah's length
+function afterWait(fn) {
+  const w = session.wait, ms = w >= 0 ? w * 1000 : -w * ayahLen() * 1000;
+  if (ms <= 0) return fn();
+  updateNote(true);
+  pendingWait = fn;
+  waitTimer = setTimeout(() => { if (playing) { pendingWait = null; fn(); } }, ms);
+}
+
+// Paused from outside the page (headphones taken out, a phone call): treat it like the pause button
+audio.addEventListener("pause", () => {
+  if (playing && !audio.ended && audio.readyState >= 3 && audio.currentTime > 0 && Date.now() - segPausedAt > 800) pause();
+});
+audio.addEventListener("timeupdate", () => {
+  const d = ayahLen(), t = audio.currentTime - (segRec() ? segStart : 0);
+  if (d > 0) $("prog").style.width = Math.min(100, Math.max(0, t / d * 100)) + "%";
+});
+// A whole-surah file: the ayah ends where the next one starts
+setInterval(() => {
+  if (!playing || !segRec() || segEnd == null) return;
+  // the surah's own basmala: go on into its first ayah without a seek
+  if (inBasmala) { if (audio.currentTime >= segEnd - 0.05) { inBasmala = false; playAyah(playIdx, false); } return; }
+  // reading straight on: move the highlight a little before the pause, so it does not trail the reciter
+  const on = !session && $("autoNext").checked && playIdx + 1 < AY.length && AY[playIdx + 1].s === AY[playIdx].s;
+  if (on && audio.currentTime >= segEnd - SEG_LEAD) return playAyah(playIdx + 1);
+  if (audio.currentTime < segEnd) return;
+  segPausedAt = Date.now(); audio.pause();
+  onAyahEnd();
+}, 50);
+audio.addEventListener("ended", onAyahEnd);
+// if the browser did not start the new file at the ayah (#t), move there once it can seek
+audio.addEventListener("loadedmetadata", () => { if (segRec() && segSrc && Math.abs(audio.currentTime - segStart) > 0.6) audio.currentTime = segStart; });
+function onAyahEnd() {
+  if (!playing) return;
+  if (inBasmala) { inBasmala = false; if (segRec()) return playAyah(playIdx, false); const o = AY[playIdx]; playSrc(urlFor(o.s, o.a)); return; }
+  if (session) {
+    const s = session;
+    if (s.ayahLeft > 0) {
+      s.ayahLeft--;
+      return afterWait(() => { audio.currentTime = segRec() ? segStart : 0; audio.play().catch(() => {}); updateNote(); });
+    }
+    if (playIdx < s.to) return afterWait(() => playAyah(playIdx + 1));
+    if (s.passLeft > 0) { s.passLeft--; return afterWait(() => playAyah(s.from)); }
+    return stop();
+  }
+  if ($("autoNext").checked && playIdx + 1 < AY.length) playAyah(playIdx + 1);
+  else stop();
+}
+
+/* ---------- Repeat dialog ---------- */
+function fillAyahs(sel, s, a) {
+  const n = SURAHS[s - 1][1];
+  sel.innerHTML = Array.from({ length: n }, (_, k) => `<option value="${k + 1}">${ar(k + 1)}</option>`).join("");
+  sel.value = Math.min(Math.max(1, a), n);
+}
+function openRepeat() {
+  const i = cur >= 0 ? cur : X().first[page - 1], s = session;
+  const from = s ? s.from : i, to = s ? s.to : i;
+  $("repFromS").value = AY[from].s; fillAyahs($("repFromA"), AY[from].s, AY[from].a);
+  $("repToS").value = AY[to].s; fillAyahs($("repToA"), AY[to].s, AY[to].a);
+  try {
+    const saved = JSON.parse(store.get("repeat") || "{}");
+    ["repAyah", "repWait", "repPass"].forEach(id => { if (saved[id] != null) $(id).value = saved[id]; });
+  } catch (e) {}
+  $("repStop").disabled = !session;
+  $("repeatModal").hidden = false;
+  $("repStart").focus();
+}
+const closeRepeat = () => { $("repeatModal").hidden = true; $("repeatBtn").focus(); };
+const countOf = v => +v === 0 ? Infinity : +v;
+$("repFromS").onchange = e => fillAyahs($("repFromA"), +e.target.value, 1);
+$("repToS").onchange = e => fillAyahs($("repToA"), +e.target.value, SURAHS[+e.target.value - 1][1]);
+$("repeatBtn").onclick = openRepeat;
+$("repeatClose").onclick = closeRepeat;
+$("repeatModal").addEventListener("click", e => { if (e.target.id === "repeatModal") closeRepeat(); });
+$("repeatModal").addEventListener("keydown", e => { if (e.key === "Escape") closeRepeat(); e.stopPropagation(); });
+$("repStart").onclick = () => {
+  let from = idxOf(+$("repFromS").value, +$("repFromA").value), to = idxOf(+$("repToS").value, +$("repToA").value);
+  if (to < from) [from, to] = [to, from];
+  store.set("repeat", JSON.stringify({ repAyah: $("repAyah").value, repWait: $("repWait").value, repPass: $("repPass").value }));
+  const ayahTimes = countOf($("repAyah").value), passTimes = countOf($("repPass").value);
+  session = { from, to, ayahTimes, wait: +$("repWait").value, passTimes, ayahLeft: ayahTimes - 1, passLeft: passTimes - 1 };
+  $("repeatBtn").classList.add("on");
+  closeRepeat();
+  playAyah(from);
+};
+$("repStop").onclick = () => { stop(); closeRepeat(); };
+audio.addEventListener("error", () => {
+  if (!playing) return;
+  stop();
+  $("audioNote").textContent = "تعذّر تشغيل التلاوة. تأكد من اتصال الإنترنت أو جرّب قارئًا آخر.";
+});
+
+/* ---------- Controls ---------- */
+function fillReciters() {
+  const list = reciters(), key = MZ().warsh ? "reciterWarsh" : "reciter", saved = store.get(key);
+  $("reciterSel").innerHTML = list.map(r => `<option value="${r[0]}">${r[1]}</option>`).join("");
+  if (saved && list.some(r => r[0] === saved)) $("reciterSel").value = saved;
+}
+function fill() {
+  $("mushafSel").innerHTML = Object.entries(MUSHAFS).map(([k, v]) => `<option value="${k}">${v.name}</option>`).join("");
+  $("mushafSel").value = mushaf;
+  const surahOpts = SURAHS.map((s, i) => `<option value="${i + 1}">${ar(i + 1)}. ${s[0]}</option>`).join("");
+  ["surahSel", "repFromS", "repToS"].forEach(id => { $(id).innerHTML = surahOpts; });
+  $("juzSel").innerHTML = Array.from({ length: 30 }, (_, i) => `<option value="${i + 1}">${ar(i + 1)}</option>`).join("");
+  fillReciters();
+  showKey();
+}
+const showKey = () => { $("tajweedKey").hidden = mushaf !== "tajweed"; };
+
+/* ---------- Bottom sheets ---------- */
+function openSheet(id) { $(id).hidden = false; }
+function closeSheets() { ["settingsModal", "tafsirModal", "bmModal"].forEach(id => { $(id).hidden = true; }); }
+["settingsModal", "tafsirModal", "bmModal"].forEach(id => {
+  $(id).addEventListener("click", e => { if (e.target.id === id || e.target.closest("[data-close]")) closeSheets(); });
+  $(id).addEventListener("keydown", e => { if (e.key === "Escape") closeSheets(); e.stopPropagation(); });
+});
+$("settingsBtn").onclick = () => openSheet("settingsModal");
+$("bmBtn").onclick = () => { updateBm(); openSheet("bmModal"); };
+$("tafsirBtn").onclick = () => { openSheet("tafsirModal"); markTafsir(true); };
+// choosing a surah, juz or page takes you straight to it
+["surahSel", "juzSel", "mushafSel"].forEach(id => $(id).addEventListener("change", closeSheets));
+$("pageInput").addEventListener("change", () => { $("pageInput").blur(); closeSheets(); });
+
+/* ---------- Swipe to turn pages (like a mushaf: swipe right for the next page) ---------- */
+let tx = 0, ty = 0, tt = 0, multi = false;
+$("spread").addEventListener("touchstart", e => {
+  multi = e.touches.length > 1;
+  const t = e.touches[0]; tx = t.clientX; ty = t.clientY; tt = Date.now();
+}, { passive: true });
+$("spread").addEventListener("touchend", e => {
+  if (zoomOn || multi || (window.visualViewport && window.visualViewport.scale > 1.05)) return;   // panning or pinch-zooming, not turning
+  const t = e.changedTouches[0], dx = t.clientX - tx, dy = t.clientY - ty;
+  if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5 || Date.now() - tt > 700) return;
+  turn(dx > 0 ? 1 : -1);
+});
+function turn(dir) {
+  const to = page + dir;
+  if (to < 1 || to > 604) return;
+  const sp = $("spread");
+  sp.classList.add(dir > 0 ? "turn-next" : "turn-prev");
+  setTimeout(() => { render(to); sp.classList.remove("turn-next", "turn-prev"); }, 140);
+}
+
+/* ---------- Lock-screen / headphone controls ---------- */
+function setMediaInfo() {
+  if (!("mediaSession" in navigator) || cur < 0) return;
+  const o = AY[playing || paused ? playIdx : cur];
+  try {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: "سورة " + SURAHS[o.s - 1][0] + " · الآية " + ar(o.a),
+      artist: $("reciterSel").selectedOptions[0] ? $("reciterSel").selectedOptions[0].text : "",
+      album: "القرآن الكريم",
+    });
+  } catch (e) {}
+}
+if ("mediaSession" in navigator) {
+  const ms = navigator.mediaSession, on = (a, f) => { try { ms.setActionHandler(a, f); } catch (e) {} };
+  on("play", () => { if (paused) resume(); else if (!playing) $("playBtn").click(); });
+  on("pause", pause);
+  on("nexttrack", () => $("nextAyah").click());
+  on("previoustrack", () => $("prevAyah").click());
+}
+
+/* ---------- Zoom mode: a bigger page that scrolls to follow the ayah being read ---------- */
+function follow(smooth) {
+  if (!zoomOn) return;
+  const box = zoomBox(), el = document.querySelector(".hl.play") || document.querySelector(".hl.sel");
+  if (!box) return;
+  if (!el) { box.scrollTo({ top: 0, left: 0 }); return; }
+  const r = el.getBoundingClientRect(), b = box.getBoundingClientRect();
+  box.scrollTo({
+    left: box.scrollLeft + (r.left + r.width / 2) - (b.left + b.width / 2),
+    top: box.scrollTop + (r.top - b.top) - b.height / 3,
+    behavior: smooth ? "smooth" : "auto",
+  });
+}
+function setZoom(on) {
+  zoomOn = on;
+  store.set("zoom", on ? "1" : "0");
+  document.body.classList.toggle("zoom", on);
+  $("zoomBtn").classList.toggle("on", on);
+  $("zoomBtn").setAttribute("aria-pressed", on);
+  render(page);
+  requestAnimationFrame(() => follow(false));
+}
+
+
+const spread = $("spread");
+spread.addEventListener("mouseover", e => {
+  const d = e.target.closest(".hl"); if (!d) return;
+  document.querySelectorAll(`.hl[data-i="${d.dataset.i}"]`).forEach(x => x.classList.add("hover"));
+});
+spread.addEventListener("mouseout", e => {
+  const d = e.target.closest(".hl"); if (!d) return;
+  document.querySelectorAll(`.hl[data-i="${d.dataset.i}"]`).forEach(x => x.classList.remove("hover"));
+});
+spread.addEventListener("click", e => {
+  const d = e.target.closest(".hl"); if (!d) return;
+  const i = +d.dataset.i;
+  playing ? playAyah(i) : select(i);
+});
+
+const step = () => twoUp() ? 2 : 1;
+const base = () => shownPages()[0];
+$("nextPage").onclick = () => turn(1);
+$("prevPage").onclick = () => turn(-1);
+$("playBtn").onclick = () => {
+  if (playing) pause();
+  else if (paused && cur === playIdx) resume();          // same ayah: carry on from where it stopped
+  else playAyah(cur < 0 ? X().first[page - 1] : cur);    // another ayah was chosen: start it
+};
+$("nextAyah").onclick = () => { const i = Math.min(AY.length - 1, cur + 1); playing ? playAyah(i) : select(i); };
+$("prevAyah").onclick = () => { const i = Math.max(0, cur - 1); playing ? playAyah(i) : select(i); };
+$("pageInput").onchange = e => { const v = parseInt(e.target.value, 10); if (v >= 1 && v <= 604) render(v); };
+$("surahSel").onchange = e => { const i = surahFirst[+e.target.value]; if (playing) playAyah(i); else select(i); };
+$("juzSel").onchange = e => render(X().juzFirst[+e.target.value]);
+$("reciterSel").onchange = () => { store.set(MZ().warsh ? "reciterWarsh" : "reciter", rec()); if (playing) playAyah(playIdx); else if (paused) stop(); };
+$("mushafSel").onchange = e => {
+  const wasWarsh = MZ().warsh;
+  if (playing) stop();
+  mushaf = e.target.value;
+  store.set("mushaf", mushaf);
+  showKey();
+  if (MZ().warsh !== wasWarsh) fillReciters();
+  const i = cur >= 0 ? cur : X().first[page - 1];
+  render(X().pageOf[i]);
+  select(i);
+};
+document.addEventListener("keydown", e => {
+  if (e.target.matches("input, select")) return;
+  if (e.key === "ArrowLeft") $("nextPage").click();
+  else if (e.key === "ArrowRight") $("prevPage").click();
+  else if (e.key === " ") { e.preventDefault(); $("playBtn").click(); }
+});
+let rz, lastW = window.innerWidth;
+// Re-layout on rotation, but not when the phone keyboard opens (that only changes the height)
+window.addEventListener("resize", () => {
+  clearTimeout(rz);
+  rz = setTimeout(() => { if (window.innerWidth !== lastW || !document.activeElement.matches("input")) { lastW = window.innerWidth; render(page); } }, 150);
+});
+
+/* ---------- Search: surahs by name, ayahs by text ---------- */
+// Letters are compared without diacritics, and alef/yaa/taa-marbuta variants count as one
+const norm = t => t.replace(/[ؐ-ًؚ-ٰٟۖ-ۭـ]/g, "")
+  .replace(/[أإآٱ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").replace(/ؤ/g, "و").replace(/ئ/g, "ي")
+  .replace(/\s+/g, " ").trim();
+const SURAH_N = SURAHS.map(x => norm(x[0]));
+let quranN = null, quranLoad = null;
+function loadQuran() {
+  if (!quranLoad) quranLoad = new Promise((ok, fail) => {
+    const sc = document.createElement("script");
+    sc.src = "quran.js";
+    sc.onload = () => { quranN = AY.map(o => norm(QURAN[o.s - 1][o.a - 1])); ok(); };
+    sc.onerror = () => { quranLoad = null; fail(); };
+    document.head.appendChild(sc);
+  });
+  return quranLoad;
+}
+const esc = t => t.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+// Mark the query inside the original (voweled) text: map normalized positions back to it
+function markIn(text, q) {
+  const keep = [], chars = [];
+  for (let k = 0; k < text.length; k++) {
+    const n = /\s/.test(text[k]) ? " " : norm(text[k]);
+    if (n) { chars.push(n); keep.push(k); }
+  }
+  const flat = chars.join(""), at = flat.indexOf(q);
+  if (at < 0) return esc(text);
+  const a = keep[at], endK = keep[at + q.length - 1];
+  let b = endK + 1;
+  while (b < text.length && !norm(text[b])) b++;   // keep the last letter's vowels inside the mark
+  return esc(text.slice(0, a)) + "<mark>" + esc(text.slice(a, b)) + "</mark>" + esc(text.slice(b));
+}
+const sBox = $("searchResults"), sIn = $("searchInput");
+let sItems = [], sOn = -1;
+function goTo(i) {
+  sBox.hidden = true; sIn.blur();
+  playing ? playAyah(i) : select(i);
+}
+function showResults(html) { sBox.innerHTML = html.replace(/🎙\s*/g, ICON.mic).replace(/[✅✓]\s*/g, ICON.ok); sBox.hidden = false; sOn = -1; sItems = [...sBox.querySelectorAll(".res")]; }
+function runSearch() {
+  const raw = sIn.value.trim();
+  if (!raw) { sBox.hidden = true; return; }
+  let html = "";
+  // "2:255", "2 255" or a surah number jump straight to it
+  const ref = /^(\d{1,3})(?:\s*[:\s\-/]\s*(\d{1,3}))?$/.exec(raw.replace(/[٠-٩]/g, d => "٠١٢٣٤٥٦٧٨٩".indexOf(d)));
+  if (ref) {
+    const s = +ref[1], a = ref[2] ? +ref[2] : 1, i = idxOf(s, a);
+    if (i >= 0) html += `<button class="res" data-i="${i}"><span class="rr">سورة ${SURAHS[s - 1][0]}${ref[2] ? " · الآية " + ar(a) : ""}</span></button>`;
+  }
+  const q = norm(raw).replace(/^سوره\s+/, "");
+  if (q) {
+    const ss = [];
+    SURAH_N.forEach((n, k) => { if (n.includes(q) || n.replace(/^ال/, "").startsWith(q)) ss.push(k); });
+    if (ss.length) html += `<div class="res-head">السور</div>` + ss.slice(0, 8).map(k =>
+      `<button class="res" data-i="${surahFirst[k + 1]}"><span class="rr">${ar(k + 1)}. سورة ${SURAHS[k][0]}</span> <span class="note">· ${ar(SURAHS[k][1])} آية</span></button>`).join("");
+  }
+  if (q.length >= 2 && quranN) {
+    const hits = [];
+    for (let i = 0; i < quranN.length && hits.length < 60; i++) if (quranN[i].includes(q)) hits.push(i);
+    let total = hits.length;
+    if (total === 60) { total = 0; quranN.forEach(t => { if (t.includes(q)) total++; }); }
+    if (hits.length) html += `<div class="res-head">الآيات (${ar(total)}${total > hits.length ? "، أول " + ar(hits.length) : ""})</div>` + hits.map(i => {
+      const o = AY[i];
+      return `<button class="res" data-i="${i}"><span class="rr">${SURAHS[o.s - 1][0]} ${ar(o.a)}</span><span class="rt">${markIn(QURAN[o.s - 1][o.a - 1], q)}</span></button>`;
+    }).join("");
+  } else if (q.length >= 2 && !quranN) {
+    html += `<div class="res-empty">جارٍ تحميل نص القرآن…</div>`;
+    loadQuran().then(runSearch, () => showResults(`<div class="res-empty">تعذّر تحميل نص القرآن للبحث.</div>`));
+  }
+  showResults(html || `<div class="res-empty">لا توجد نتائج</div>`);
+}
+let sT;
+sIn.addEventListener("focus", () => { loadQuran().catch(() => {}); if (sIn.value.trim()) runSearch(); });
+sIn.addEventListener("input", () => { clearTimeout(sT); sT = setTimeout(runSearch, 150); });
+sIn.addEventListener("keydown", e => {
+  if (e.key === "Escape") { sBox.hidden = true; sIn.blur(); return; }
+  if (!sItems.length || sBox.hidden) return;
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    sOn = (sOn + (e.key === "ArrowDown" ? 1 : -1) + sItems.length) % sItems.length;
+    sItems.forEach((b, k) => b.classList.toggle("on", k === sOn));
+    sItems[sOn].scrollIntoView({ block: "nearest" });
+  } else if (e.key === "Enter") {
+    e.preventDefault();
+    goTo(+sItems[Math.max(0, sOn)].dataset.i);
+  }
+});
+sBox.addEventListener("click", e => { const b = e.target.closest(".res"); if (b) goTo(+b.dataset.i); });
+sIn.addEventListener("search", () => { if (!sIn.value.trim()) sBox.hidden = true; });
+document.addEventListener("click", e => { if (!$("searchBox").contains(e.target)) sBox.hidden = true; });
+
+/* ---------- Bookmark (الفاصل): remember where you stopped and jump back with one tap ---------- */
+function bmIdx() {
+  const m = /(\d{1,3})_(\d{1,3})/.exec(store.get("bookmark") || "");
+  return m ? idxOf(+m[1], +m[2]) : -1;
+}
+const bmLabel = i => { const o = AY[i]; return "سورة " + SURAHS[o.s - 1][0] + " · الآية " + ar(o.a) + " · صفحة " + ar(X().pageOf[i]); };
+function updateBm() {
+  const i = bmIdx();
+  $("bmGo").disabled = i < 0;
+  $("bmGoLabel").textContent = i < 0 ? "لا يوجد فاصل محفوظ بعد" : "الفاصل: " + bmLabel(i);
+}
+function saveBookmark() {
+  const i = (playing || paused) ? playIdx : (cur >= 0 ? cur : X().first[page - 1]);
+  store.set("bookmark", AY[i].s + "_" + AY[i].a);
+  updateBm(); paint();
+  const b = $("bmSave"), t = b.innerHTML;
+  b.innerHTML = ICON.ok + "حُفظ الفاصل"; b.disabled = true;
+  setTimeout(() => { b.innerHTML = t; b.disabled = false; }, 1400);
+}
+function goBookmark() {
+  const i = bmIdx(); if (i < 0) return;
+  if (typeof closeSheets === "function") closeSheets();
+  playing ? playAyah(i) : select(i);
+}
+$("bmSave").onclick = saveBookmark;
+$("bmGo").onclick = goBookmark;
+
+/* ---------- Isti'adha and basmala: recognised and skipped, so they don't send the search or the highlight elsewhere ---------- */
+const OPENINGS = [
+  { kind: "t", w: "اعوذ بالله من الشيطان الرجيم".split(" ") },
+  { kind: "t", w: "اعوذ بالله السميع العليم من الشيطان الرجيم".split(" ") },
+  { kind: "b", w: "بسم الله الرحمن الرحيم".split(" "), lead: true },
+];
+// Removes the isti'adha wherever it is and a basmala at the start. A part still being said (at the end) is
+// skipped too, but a part followed by other words is kept: «اعوذ بالله ان اكون…» (البقرة ٦٧) is an ayah.
+function skipOpening(words, keepBasmala) {
+  const out = [], keep = [], seen = { t: false, b: false };
+  for (let k = 0; k < words.length; ) {
+    let skip = 0;
+    for (const o of OPENINGS) {
+      if (o.kind === "b" && (keepBasmala || out.length)) continue;
+      let n = 0;
+      while (n < o.w.length && k + n < words.length && same(words[k + n], o.w[n])) n++;
+      if (n === o.w.length || (n >= 1 && k + n === words.length && (n >= 2 || o.kind === "t"))) {
+        if (n > skip) { skip = n; seen[o.kind] = true; }
+      }
+    }
+    if (skip) { k += skip; continue; }
+    out.push(words[k]); keep.push(k); k++;
+  }
+  return { words: out, keep, taawudh: seen.t, basmala: seen.b };
+}
+const openingNote = o => (o.taawudh ? "أعوذ بالله من الشيطان الرجيم ✓ " : "") + (o.basmala ? "بسم الله الرحمن الرحيم ✓ " : "");
+
+/* ---------- Follow-me (تابعني): listen to the reader through the mic and move the highlight with them ---------- */
+// The browser's speech recognition is made for everyday speech, so recitation is matched loosely:
+// the heard words are compared, letters only and allowing small slips, with the words just ahead on the page.
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let fol = null;   // { rec, words: [{ w, i }], ptr }
+const lev = (a, b) => {
+  if (a === b) return 0;
+  const m = a.length, n = b.length; if (!m || !n) return m || n;
+  let prev = Array.from({ length: n + 1 }, (_, k) => k);
+  for (let x = 1; x <= m; x++) {
+    const cur = [x];
+    for (let y = 1; y <= n; y++) cur[y] = Math.min(prev[y] + 1, cur[y - 1] + 1, prev[y - 1] + (a[x - 1] === b[y - 1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[n];
+};
+const strip = w => w.replace(/^(و|ف)?(ال)/, "").replace(/ا/g, "");
+function same(a, b) {
+  if (a === b) return true;
+  const x = strip(a), y = strip(b);
+  if (x === y) return true;
+  const L = Math.max(x.length, y.length);
+  return L >= 3 && lev(x, y) / L <= 0.34;
+}
+// Words of the next ayahs, from the ayah where reading starts
+// The words followed: the page(s) in view and the page after, since a reader almost always goes on reading there
+function followWords(from) {
+  const P = X().pageOf[from], sp = shownPages(), ps = sp.includes(P) ? sp : [P];
+  const lo = Math.min(...ps), hi = Math.min(604, Math.max(...ps) + 1);
+  const a = X().first[lo - 1], b = (X().first[hi] ?? AY.length) - 1;
+  const words = [];
+  for (let i = a; i <= b; i++) quranN[i].split(" ").forEach(w => w && words.push({ w, i }));
+  return words;
+}
+const followAt = i => Math.max(0, fol.words.findIndex(x => x.i === i));
+const ICON = { ok: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16 9.8"/></svg>', mic: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>', play: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor" stroke="none"/></svg>', pause: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="5" width="3.6" height="14" rx="1" fill="currentColor" stroke="none"/><rect x="13.9" y="5" width="3.6" height="14" rx="1" fill="currentColor" stroke="none"/></svg>' };
+function followStatus(t) {
+  const n = $("followNote"); n.hidden = !t; n.textContent = "";
+  if (!t) return;
+  const mic = t.startsWith("🎙");
+  if (mic) { t = t.replace(/^🎙\s*/, ""); n.insertAdjacentHTML("beforeend", '<svg viewBox="0 0 16 24" width="11" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="vertical-align:-3px;margin-inline-end:5px"><rect x="3.5" y="1.5" width="9" height="13" rx="4.5"/><path d="M5.5 6h5M5.5 9h5M5.5 12h5M8 14.5v5"/><rect x="5" y="19.5" width="6" height="3" rx="1"/></svg>'); }
+  t.split("✓").forEach((part, k) => { if (k) n.insertAdjacentHTML("beforeend", ICON.ok); n.append(part); });
+}
+// Very common words (الله، الذين، من، في…) appear on every page, so on their own they must not move the highlight
+const COMMON = new Set("الله لله بالله والله الذين الذي والذين الا ان من في ما لا على هو هم قال قالوا وما ومن ولا انه انا اني كان كانوا لهم له به عن الى اذا ثم او قد لم لن يا هذا ذلك التي".split(" "));
+const weight = w => COMMON.has(w) || strip(w).length < 3 ? 0.34 : 1;
+// Best place in the page text where the last heard words end, looking a little behind and ahead of the current spot
+function followMatch(heard) {
+  const W = fol.words, h = heard.slice(-6);
+  let best = -1, bestScore = 0;
+  const dist = j => j >= fol.ptr - 4 ? j - fol.ptr : 1000 + fol.ptr - j;   // ahead of the reader first, then back
+  for (let j = 0; j < W.length; j++) {
+    if (!h.slice(-2).some(x => weight(x) === 1 && same(x, W[j].w))) continue;   // anchor on a meaningful word
+    // in-order heard words found among the page words ending at j, common words counting little
+    let score = 0, k = j;
+    for (let t = h.length - 1; t >= 0 && k >= 0 && k > j - 9; t--) {
+      for (let q = k; q > j - 9 && q >= 0; q--) if (same(h[t], W[q].w)) { score += weight(h[t]); k = q - 1; break; }
+    }
+    if (score > bestScore || (score === bestScore && dist(j) < dist(best))) { best = j; bestScore = score; }
+  }
+  const need = h.length >= 2 ? 1.9 : 0.9;
+  return { j: bestScore >= need ? best : -1, score: bestScore };
+}
+function followHeard(text) {
+  if (!fol || !quranN) return;
+  // at the opening of al-Fatiha the basmala is the first ayah, so it is followed there
+  // the words as heard (for showing) and letters-only (for matching), one for one
+  const raw = text.trim().split(/\s+/).filter(w => norm(w));
+  const o = skipOpening(raw.map(norm), cur === 0);
+  fol.op = o; fol.rest = o.keep.map(k => raw[k]);
+  const heard = o.words;
+  if (!heard.length) return;
+  const m = followMatch(heard);
+  let j = m.j;
+  // leave these pages only when sure: the words are not here (or fit here only weakly) and fit
+  // one place elsewhere in the Quran clearly
+  const now = Date.now();
+  const check = heard.length >= 4 && (j < 0 || m.score < 3) && now - (fol.jumped || 0) > 2500 && now - (fol.checked || 0) > 600;   // the whole-Quran search is heavier: not on every word
+  if (check) fol.checked = now;
+  const r = check ? voiceRank(heard.slice(-8)) : [], ga = r[0];
+  let far = false;
+  if (ga && (!r[1] || r[1].score < ga.score) && !fol.words.some(x => x.i === ga.i)) {
+    // an ayah on these pages that reads almost the same (لقمان ١٥ / العنكبوت ٨) keeps the reader here
+    const here = voiceRank(heard.slice(-8), [...new Set(fol.words.map(x => x.i))])[0];
+    const elsewhere = (j < 0 ? ga.score >= 5 : ga.score >= 6) && (!here || here.score < ga.score - 2);
+    // and it must hold on two checks in a row, so one misheard word does not move the reader
+    fol.away = elsewhere ? (fol.away || 0) + 1 : 0;
+    far = fol.away >= 2;
+  } else if (check) fol.away = 0;
+  if (j < 0 && !far) return;
+  if (far) {
+    const a = ga;
+    fol.jumped = Date.now(); fol.away = 0;
+    fol.words = followWords(a.i);
+    const last = heard[heard.length - 1], base = followAt(a.i);
+    let k = -1;
+    fol.words.slice(base, base + 60).forEach((x, n) => { if (k < 0 && n > 0 && same(last, x.w) && x.i <= a.i + 1) k = base + n; });
+    j = k >= 0 ? k : base;
+  }
+  fol.ptr = j + 1;
+  const i = fol.words[j].i;
+  if (i !== cur) select(i);
+  if (fol.ptr > fol.words.length - 30) {   // nearing the end of the loaded pages: load from this ayah's page on
+    const off = j - followAt(i);
+    fol.words = followWords(i); fol.ptr = followAt(i) + off + 1;
+  }
+}
+// What the line under the controls says: ابدأ القراءة → the isti'adha / basmala when heard →
+// the first words read, for 3 seconds, so the reader sees it hears them → جاري الاستماع… from then on
+function followLine() {
+  if (!fol.rest || !fol.rest.length) {
+    if (fol.op && fol.op.basmala) return "بسم الله الرحمن الرحيم ✓";
+    if (fol.op && fol.op.taawudh) return "أعوذ بالله من الشيطان الرجيم ✓";
+    return "ابدأ القراءة";
+  }
+  if (!fol.wordsAt) {
+    fol.wordsAt = Date.now();
+    const f = fol; setTimeout(() => { if (fol === f) followStatus("🎙 جاري الاستماع…"); }, 3000);
+  }
+  return Date.now() - fol.wordsAt < 3000 ? fol.rest.slice(0, 6).join(" ") : "جاري الاستماع…";
+}
+async function startFollow() {
+  if (!SR) { followStatus("ميزة «تابعني» غير مدعومة في هذا المتصفح. جرّبها في Chrome."); return; }
+  try { await loadQuran(); } catch (e) { followStatus("تعذّر تحميل نص القرآن. تأكد من الاتصال."); return; }
+  if (playing) (typeof pause === "function" ? pause : stop)();
+  const from = cur >= 0 ? cur : X().first[page - 1];
+  select(from);
+  const rec = new SR();
+  rec.lang = "ar-SA"; rec.continuous = true; rec.interimResults = true; rec.maxAlternatives = 1;
+  fol = { rec, words: followWords(from), ptr: 0 };
+  fol.ptr = followAt(from);
+  rec.onresult = e => {
+    let t = "";
+    for (let r = Math.max(0, e.results.length - 3); r < e.results.length; r++) t += " " + e.results[r][0].transcript;
+    followHeard(t);
+    if (fol) followStatus("🎙 " + followLine());
+  };
+  rec.onerror = e => {
+    if (e.error === "not-allowed" || e.error === "service-not-allowed") { followStatus("لازم تسمح للموقع باستخدام المايك."); stopFollow(true); }
+  };
+  rec.onend = () => { if (fol && fol.rec === rec) { try { rec.start(); } catch (e) {} } };   // keep listening after pauses
+  try { rec.start(); } catch (e) {}
+  $("followBtn").classList.add("on");
+  followStatus("🎙 ابدأ القراءة");
+}
+function stopFollow(keepNote) {
+  if (!fol) return;
+  const r = fol.rec; fol = null;
+  try { r.abort(); } catch (e) {}
+  $("followBtn").classList.remove("on");
+  if (!keepNote) followStatus("");
+}
+function closeFollowNotice() { $("followModal").hidden = true; }
+$("followBtn").onclick = () => {
+  if (fol) return stopFollow();
+  if (store.get("followNotice") === "off") return startFollow();
+  $("followNoRemind").checked = false;
+  $("followModal").hidden = false;
+};
+$("followGo").onclick = () => {
+  if ($("followNoRemind").checked) store.set("followNotice", "off");
+  closeFollowNotice(); startFollow();
+};
+$("followCancel").onclick = $("followCancelX").onclick = closeFollowNotice;
+$("followModal").addEventListener("click", e => { if (e.target.id === "followModal") closeFollowNotice(); });
+
+/* ---------- Voice search: say a few words and it finds the ayah anywhere in the Quran ---------- */
+// Ayahs are ranked by how many of the heard words they contain in order, allowing small slips.
+function voiceRank(heard, only) {   // only: a list of ayahs to look in (default: the whole Quran)
+  const h = heard.slice(0, 14), out = [], q = h.join(" ");
+  if (!quranW) quranW = quranN.map(t => t.split(" "));
+  for (let n = 0; n < (only ? only.length : quranN.length); n++) {
+    const i = only ? only[n] : n;
+    if (quranN[i].includes(q)) { out.push({ i, score: h.length + 1 }); continue; }   // exact run of words
+    // this ayah followed by the next one, so a reading that crosses into the next ayah still matches
+    const W = i + 1 < quranW.length ? quranW[i].concat(quranW[i + 1]) : quranW[i], n0 = quranW[i].length;
+    let best = 0;
+    for (let s0 = 0; s0 < n0; s0++) {
+      // start where one of the first heard words is, then follow the heard words closely (small gaps only)
+      let t0 = -1;
+      for (let t = 0; t < Math.min(3, h.length); t++) if (same(h[t], W[s0])) { t0 = t; break; }
+      if (t0 < 0) continue;
+      let score = 1, k = s0 + 1, miss = 0;
+      for (let t = t0 + 1; t < h.length && k < W.length; t++) {
+        let f = -1;
+        for (let x = k; x < Math.min(W.length, k + 3); x++) if (same(h[t], W[x])) { f = x; break; }
+        if (f < 0) { if (++miss > 2) break; continue; }
+        score++; k = f + 1;
+      }
+      if (score > best) best = score;
+    }
+    if (best >= Math.min(3, h.length)) out.push({ i, score: best });
+  }
+  return out.sort((a, b) => b.score - a.score || a.i - b.i).slice(0, 15);
+}
+let quranW = null;
+function voiceShow(text) {
+  const heard = norm(text).split(" ").filter(Boolean);
+  if (!heard.length) return;
+  const hits = voiceRank(heard);
+  if (!hits.length) { showResults(`<div class="res-empty">ما لقيت آية تطابق: «${esc(text)}». جرّب تقرأ كلمات أكثر.</div>`); return; }
+  showResults(`<div class="res-head">🎙 سمعت: «${esc(text)}»</div>` + hits.map(({ i }) => {
+    const o = AY[i];
+    return `<button class="res" data-i="${i}"><span class="rr">${SURAHS[o.s - 1][0]} ${ar(o.a)}</span><span class="rt">${esc(QURAN[o.s - 1][o.a - 1])}</span></button>`;
+  }).join(""));
+  // a clear best match: go straight to it; otherwise the list lets the reader pick
+  const [a, b] = hits;
+  if (a.score >= Math.min(3, heard.length) && (!b || a.score > b.score)) goTo(a.i);
+}
+let vrec = null;
+// Ayahs whose text contains the words read so far, in that order
+const liveHits = q => { const out = []; for (let i = 0; i < quranN.length && out.length < 61; i++) if (quranN[i].includes(q)) out.push(i); return out; };
+async function voiceSearch() {
+  if (vrec) { try { vrec.stop(); } catch (e) {} return; }
+  if (!SR) { showResults(`<div class="res-empty">البحث بالصوت غير مدعوم في هذا المتصفح. جرّبه في Chrome.</div>`); return; }
+  try { await loadQuran(); } catch (e) { showResults(`<div class="res-empty">تعذّر تحميل نص القرآن.</div>`); return; }
+  if (typeof fol !== "undefined" && fol) stopFollow();
+  const rec = new SR();
+  rec.lang = "ar-SA"; rec.continuous = true; rec.interimResults = true; rec.maxAlternatives = 1;
+  vrec = rec; $("voiceBtn").classList.add("on");
+  sIn.value = "";
+  showResults(`<div class="res-empty">🎙 اقرأ آية ونجدها لك</div>`);
+  let done = false, text = "";
+  rec.onresult = e => {
+    if (done) return;
+    text = ""; for (let r = 0; r < e.results.length; r++) text += e.results[r][0].transcript;
+    text = text.trim();
+    const o = skipOpening(norm(text).split(" ").filter(Boolean));
+    if (o.taawudh || o.basmala) text = o.words.join(" ");   // the isti'adha / basmala is not part of the search
+    sIn.value = text;                       // the words appear in the search box as you read
+    const q = norm(text).replace(/^سوره\s+/, "");
+    if (!q && (o.taawudh || o.basmala)) { showResults(`<div class="res-empty">🎙 ${openingNote(o)}— أكمل قراءة الآية…</div>`); return; }
+    if (q.split(" ").length < 2) return;
+    runSearch();                            // the list narrows with every word
+    const hits = liveHits(q);
+    if (hits.length === 1 && q.split(" ").length >= 3) {   // only one ayah left: that is it
+      done = true;
+      showResults(`<div class="res-head">✅ وجدتها</div><button class="res" data-i="${hits[0]}"><span class="rr">${SURAHS[AY[hits[0]].s - 1][0]} ${ar(AY[hits[0]].a)}</span><span class="rt">${markIn(QURAN[AY[hits[0]].s - 1][AY[hits[0]].a - 1], q)}</span></button>`);
+      try { rec.stop(); } catch (e) {}
+      setTimeout(() => goTo(hits[0]), 700);
+    }
+  };
+  rec.onerror = e => {
+    if (e.error === "not-allowed" || e.error === "service-not-allowed") showResults(`<div class="res-empty">لازم تسمح للموقع باستخدام المايك.</div>`);
+    else if (e.error === "no-speech") showResults(`<div class="res-empty">🎙 تأكد إن المايك شغّال ومسموح للموقع</div>`);
+  };
+  rec.onend = () => {
+    vrec = null; $("voiceBtn").classList.remove("on");
+    if (done) return;
+    const t = text || sIn.value;
+    if (!t.trim()) { showResults(`<div class="res-empty">🎙 تأكد إن المايك شغّال ومسموح للموقع</div>`); return; }
+    // stopped before one ayah was left: if the exact words match nothing (a misheard word), fall back to close matches
+    if (liveHits(norm(t)).length) runSearch(); else voiceShow(t);
+  };
+  try { rec.start(); } catch (e) { vrec = null; $("voiceBtn").classList.remove("on"); }
+}
+$("voiceBtn").onclick = e => { e.stopPropagation(); voiceSearch(); };
+
+/* ---------- Start ---------- */
+function parseRef(str) {
+  const m = /(\d{1,3})[_:-](\d{1,3})/.exec(str || "");
+  return m ? idxOf(+m[1], +m[2]) : -1;
+}
+fill();
+updateBm();
+setPlayBtn();
+let start = parseRef(location.hash);
+if (start < 0) start = idxOf(1, 1);
+render(X().pageOf[start]);
+select(start);
+</script>
+<script src="offline.js"></script>
+</body>
+</html>
