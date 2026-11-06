@@ -699,7 +699,10 @@ const SURAH_FILES = {
   // still being tried out: only in the owner's browser for now
   ...(window.OWNER ? { "Yasser_Ad-Dussary_128kbps": { json: "yasser", v: 4, pre: true, basmala: "audio/yasser-basmala.mp3", times: null,
     base: s => "https://nawafz2011-blip.github.io/yasser-dosari-" + (s <= 19 ? 1 : 2) + "/",
-    split: { 2: [142, "002b", 3024.6] } } } : {}),
+    split: { 2: [142, "002b", 3024.6] } },
+    "Fares_Abbad_64kbps": { json: "fares", v: 1, pre: true, basmala: "audio/fares-basmala.mp3", times: null,
+    base: s => "https://nawafz2011-blip.github.io/fares-abbad-" + (s <= 19 ? 1 : 2) + "/",
+    split: { 2: [142, "002b", 2840.0] } } } : {}),
 };
 // the file an ayah is in, and where that file starts in the surah's timing
 const segFile = (g, s, a) => {
